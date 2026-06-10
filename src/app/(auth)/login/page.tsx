@@ -8,13 +8,13 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(signIn, null)
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-8">
-      <h2 className="text-xl font-semibold text-gray-900 mb-1">Welcome back</h2>
-      <p className="text-sm text-gray-500 mb-6">Sign in to your account</p>
+    <div className="rounded-2xl border border-gray-800/60 bg-gray-900/80 p-8 shadow-2xl shadow-black/40 backdrop-blur-sm">
+      <h2 className="mb-1 text-xl font-bold text-white">Bienvenido de nuevo</h2>
+      <p className="mb-6 text-sm text-gray-400">Inicia sesión en tu cuenta</p>
 
       <form action={formAction} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-400">
             Email
           </label>
           <input
@@ -23,14 +23,14 @@ export default function LoginPage() {
             type="email"
             autoComplete="email"
             required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"
-            placeholder="you@example.com"
+            placeholder="tu@email.com"
+            className="w-full rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-2.5 text-sm text-white placeholder-gray-600 transition-colors focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Password
+          <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-gray-400">
+            Contraseña
           </label>
           <input
             id="password"
@@ -38,13 +38,13 @@ export default function LoginPage() {
             type="password"
             autoComplete="current-password"
             required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"
             placeholder="••••••••"
+            className="w-full rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-2.5 text-sm text-white placeholder-gray-600 transition-colors focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20"
           />
         </div>
 
         {state?.error && (
-          <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+          <p className="rounded-lg border border-red-800/40 bg-red-950/40 px-3 py-2 text-sm text-red-400">
             {state.error}
           </p>
         )}
@@ -52,16 +52,16 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          className="w-full rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? 'Signing in…' : 'Sign in'}
+          {isPending ? 'Iniciando sesión…' : 'Iniciar sesión'}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-500">
-        Don&apos;t have an account?{' '}
-        <Link href="/register" className="font-medium text-green-700 hover:text-green-600">
-          Create one
+        ¿No tienes cuenta?{' '}
+        <Link href="/register" className="font-medium text-green-400 hover:text-green-300 transition-colors">
+          Regístrate
         </Link>
       </p>
     </div>
