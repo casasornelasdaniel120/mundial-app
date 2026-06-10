@@ -41,7 +41,7 @@ export default async function LeagueDetailPage({ params }: Props) {
   if (!membership) redirect('/leagues')
 
   // Build leaderboard: members + their fantasy team points
-  const [{ data: members }, { data: fantasyTeams }, { data: draftSession }] = await Promise.all([
+  const [{ data: members }, { data: fantasyTeams }] = await Promise.all([
     supabase
       .from('league_members')
       .select('id, user_id, team_name, joined_at')
@@ -50,12 +50,6 @@ export default async function LeagueDetailPage({ params }: Props) {
       .from('fantasy_teams')
       .select('user_id, total_points')
       .eq('league_id', id),
-    supabase
-      .from('draft_sessions')
-      .select('id, status')
-      .eq('league_id', id)
-      .in('status', ['waiting', 'active', 'completed'])
-      .maybeSingle(),
   ])
 
   const pointsMap = new Map(
@@ -78,9 +72,6 @@ export default async function LeagueDetailPage({ params }: Props) {
 
   const isAdmin = league.admin_user_id === user.id
   const allZero = leaderboard.every(e => e.total_points === 0)
-  const draftHref = `/leagues/${league.id}/draft`
-  const showJoinDraft = !isAdmin && (draftSession?.status === 'waiting' || draftSession?.status === 'active')
-  const showViewDraft = !isAdmin && draftSession?.status === 'completed'
 
   return (
     <div className="space-y-6">
@@ -122,22 +113,6 @@ export default async function LeagueDetailPage({ params }: Props) {
                 className="rounded-lg border border-gray-700/60 bg-gray-800/40 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-gray-500/60 hover:bg-gray-700/60"
               >
                 ⚙️ Administrar Liga
-              </Link>
-            )}
-            {showJoinDraft && (
-              <Link
-                href={draftHref}
-                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500"
-              >
-                Unirse al Draft
-              </Link>
-            )}
-            {showViewDraft && (
-              <Link
-                href={draftHref}
-                className="rounded-lg border border-gray-700/60 bg-gray-800/40 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-gray-500/60 hover:bg-gray-700/60"
-              >
-                Ver Draft
               </Link>
             )}
             <Link
