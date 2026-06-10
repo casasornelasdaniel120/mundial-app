@@ -21,6 +21,17 @@ No test suite exists yet.
 
 ---
 
+## Deployment
+- **Hosted on Vercel** — production URL: _(fill in — not recorded in the repo)_
+- **Required environment variables** (Vercel → Project Settings → Environment Variables, mirroring `.env.local`):
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `API_FOOTBALL_KEY` — server-side only, never `NEXT_PUBLIC_`
+- Per-environment manual steps: run migrations in the SQL Editor and enable Realtime for `draft_sessions`/`draft_picks` (see Migrations below)
+- ⚠️ Before going public: sync routes have no auth guard and the draft flow still has debug `console.log` tracing (see Known Technical Debt)
+
+---
+
 ## Supabase Project
 - **Project ID:** `jrviddestqlarykyoyfn`
 - **API URL:** `https://jrviddestqlarykyoyfn.supabase.co`
@@ -48,21 +59,25 @@ No test suite exists yet.
 
 ## Architecture
 
-### Route layout
+### Route layout — all pages built
 ```
 src/app/
+  page.tsx             → / — landing page
   (auth)/              → /login, /register — dark auth pages; actions.ts has signIn/signUp
   (dashboard)/         → Protected layout with dark nav + auth guard
-    leagues/           → /leagues list; actions.ts has createLeague/joinLeague
-    leagues/[id]/      → League detail + leaderboard
+    leagues/           → /leagues list; /leagues/new create form; actions.ts has createLeague/joinLeague
+    leagues/[id]/      → League detail + leaderboard + admin actions (DeleteLeagueButton,
+                          KickMemberButton; actions.ts has deleteLeague/kickMember)
     leagues/[id]/admin/   → Admin panel; actions.ts has initDraft
-    leagues/[id]/draft/   → Live snake draft room (Realtime); actions.ts has startDraft/makePick/autoPick
-    leagues/[id]/my-team/ → Post-draft team view + lineup editor; actions.ts has saveLineup
+    leagues/[id]/draft/   → Live snake draft room (Realtime); actions.ts has startDraft/makePick/autoPick;
+                            page self-heals finalizeDraft on load if completed
+    leagues/[id]/my-team/ → Roster list + lineup editor (LineupManager), team rename (RenameTeamForm),
+                            per-matchday points breakdown; actions.ts has saveLineup/updateTeamName
   api/
-    sync/teams|players|fixtures/  → Manual data sync from API-Football
-    draft/advance/                → POST — advances draft turn after a pick (league member auth required)
+    sync/teams|players|fixtures/  → Manual data sync from API-Football (GET)
+    draft/advance/                → POST — advances draft turn after a pick; runs autopick safety net
     draft/autopick/               → POST — auto-picks for an expired turn (league member auth required)
-  join/[invite_code]/  → Shows league info + one-click join
+  join/[invite_code]/  → League info + join form (asks for team name)
   auth/callback/       → Supabase OAuth/magic-link code exchange
 ```
 
@@ -154,7 +169,14 @@ Server Component page that:
 | `draft_sessions` | `league_id`, `status` (waiting/active/completed), `current_pick_number`, `current_user_id`, `pick_deadline`, `snake_order` (JSONB array of user_id strings) |
 | `draft_picks` | `draft_session_id`, `pick_number`, `user_id`, `player_id` — UNIQUE(draft_session_id, pick_number) |
 
-Migrations in `supabase/migrations/001–005_*.sql` run in order via the Supabase SQL Editor. After `004_draft.sql`, enable Realtime for `draft_sessions` and `draft_picks` in Supabase Dashboard → Database → Replication.
+### Migrations (`supabase/migrations/`, run in order via the SQL Editor)
+| File | What it does |
+|---|---|
+| `001_initial_schema.sql` | All core tables (`national_teams` → `match_stats`) + RLS enabled with owner-scoped write policies |
+| `002_simplify_read_policies.sql` | Replaces recursive `league_members` self-join read policies with simple `auth.uid() IS NOT NULL` reads on `leagues`, `league_members`, `fantasy_teams`, `fantasy_team_players` |
+| `003_add_external_ids.sql` | Adds `api_football_id INTEGER UNIQUE` to `national_teams`/`players`/`matches` + write policies for the sync routes |
+| `004_draft.sql` | Creates `draft_sessions` + `draft_picks` with `REPLICA IDENTITY FULL`; draft RLS policies. **After running:** enable Realtime for both tables (Dashboard → Database → Replication) |
+| `005_fix_write_policies.sql` | Fixes silently-failing writes: `fantasy_team_players` INSERT now allowed for any league member (required by `finalizeDraft`); adds admin DELETE policies on `league_members`/`fantasy_teams`/`fantasy_team_players`/`draft_sessions`/`draft_picks` (kick member, delete league) |
 
 ### RLS summary
 - All tables have RLS enabled
