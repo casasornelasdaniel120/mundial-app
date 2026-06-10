@@ -3,6 +3,31 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+export async function updateTeamName(
+  leagueId: string,
+  teamName: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Debes iniciar sesión.' }
+
+  const trimmed = teamName.trim()
+  if (!trimmed) return { ok: false, error: 'El nombre no puede estar vacío.' }
+  if (trimmed.length > 30) return { ok: false, error: 'Máximo 30 caracteres.' }
+
+  const { error } = await supabase
+    .from('league_members')
+    .update({ team_name: trimmed })
+    .eq('league_id', leagueId)
+    .eq('user_id', user.id)
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath(`/leagues/${leagueId}`)
+  revalidatePath(`/leagues/${leagueId}/my-team`)
+  return { ok: true }
+}
+
 type LineupUpdate = {
   rosterId: string
   isStarting: boolean

@@ -6,7 +6,8 @@ import React, {
 } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { startDraft, makePick, autoPick } from './actions'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import { startDraft, makePick } from './actions'
 import { getPickUser } from '@/lib/draft/snake'
 import type { IDraftSession, IDraftPick } from '@/types/db'
 
@@ -120,6 +121,83 @@ export default function DraftRoom({
   const [isStarting, startDraftTransition] = useTransition()
   const autoPickFiredFor = useRef(-1)
 
+  // Identity used for isMyTurn. Initialized from the server-rendered prop,
+  // then verified against client-side Supabase auth on mount — if they ever
+  // disagree, the client value wins and the console shows both.
+  const [authUserId, setAuthUserId] = useState<string | null>(currentUserId)
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      console.log(
+        `[DraftRoom] client auth check — supabase.auth user=${data.user?.id} | server prop=${currentUserId} | match=${data.user?.id === currentUserId}`
+      )
+      if (data.user) setAuthUserId(data.user.id)
+    })
+  }, [currentUserId])
+
+  // ── Connection state ──────────────────────────────────────
+  const [isConnected, setIsConnected] = useState(true)
+  const hadDisconnectRef = useRef(false)
+
+  // Re-fetch session + all picks after a reconnect to recover anything that
+  // happened while the Realtime channel was down.
+  const resyncFromServer = useCallback(async () => {
+    const supabase = createClient()
+    console.log('[DraftRoom] resync — fetching fresh session and picks from server')
+
+    const [sessionRes, picksRes] = await Promise.all([
+      supabase.from('draft_sessions').select('*').eq('id', initialSession.id).single(),
+      supabase
+        .from('draft_picks')
+        .select('*')
+        .eq('draft_session_id', initialSession.id)
+        .order('pick_number', { ascending: true }),
+    ])
+
+    if (sessionRes.data) {
+      const fresh = sessionRes.data as IDraftSession
+      setSession(fresh)
+      // TIMER SYNC: derive remaining seconds from the real deadline rather
+      // than resetting to 60 — the turn may be half-elapsed.
+      const secs = fresh.pick_deadline
+        ? Math.max(0, Math.floor((new Date(fresh.pick_deadline).getTime() - Date.now()) / 1000))
+        : 0
+      setCountdown(secs)
+      console.log(
+        `[DraftRoom] resync — session at pick ${fresh.current_pick_number} (user ${fresh.current_user_id}), ${secs}s remaining`
+      )
+    } else {
+      console.log(`[DraftRoom] resync — session fetch failed: ${sessionRes.error?.message}`)
+    }
+
+    if (picksRes.data) {
+      const freshPicks = picksRes.data as IDraftPick[]
+      // MISSED PICKS RECOVERY: replace local state wholesale with server truth.
+      setPicks(prev => {
+        if (prev.length !== freshPicks.length) {
+          console.log(
+            `[DraftRoom] resync — picks out of sync (local=${prev.length}, server=${freshPicks.length}); recovered ${freshPicks.length - prev.length} missed pick(s)`
+          )
+        }
+        return freshPicks
+      })
+      setPickedPlayerIds(new Set(freshPicks.map(p => p.player_id)))
+    } else {
+      console.log(`[DraftRoom] resync — picks fetch failed: ${picksRes.error?.message}`)
+    }
+
+    // If the deadline expired while we were offline, recover the stuck turn.
+    // Server-side validation makes this a no-op unless an autopick is needed.
+    fetch('/api/draft/autopick', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: initialSession.id }),
+    })
+      .then(r => r.json())
+      .then(json => console.log('[DraftRoom] resync autopick check:', json))
+      .catch(err => console.log('[DraftRoom] resync autopick check failed:', err))
+  }, [initialSession.id])
+
   const totalPicks = leagueMembers.length * 19
   const memberMap  = useMemo(
     () => new Map(leagueMembers.map(m => [m.user_id, m.team_name ?? 'Mi Equipo'])),
@@ -129,47 +207,110 @@ export default function DraftRoom({
   // ── Realtime ─────────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient()
-    const channel = supabase
-      .channel(`draft-${session.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'draft_sessions', filter: `id=eq.${session.id}` },
-        (payload) => setSession(payload.new as IDraftSession),
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'draft_picks', filter: `draft_session_id=eq.${session.id}` },
-        (payload) => {
-          const incoming = payload.new as IDraftPick
+    let channel: RealtimeChannel | null = null
+    let cancelled = false
 
-          // Remove the player from the available list the moment the Realtime event
-          // arrives — covers picks made by other users and confirms our own picks.
-          setPickedPlayerIds(prev => {
-            if (prev.has(incoming.player_id)) return prev          // already removed optimistically
-            return new Set([...prev, incoming.player_id])
-          })
+    const setup = async () => {
+      // With RLS enabled on draft_sessions/draft_picks, Realtime only delivers
+      // rows the subscriber's JWT is allowed to SELECT. If the socket joins
+      // carrying only the anon key, the channel reports SUBSCRIBED but every
+      // event is silently filtered out server-side. Forward the user's access
+      // token to the realtime connection explicitly BEFORE subscribing.
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      if (authSession) {
+        supabase.realtime.setAuth(authSession.access_token)
+        console.log('[DraftRoom] realtime auth token set from user session')
+      } else {
+        console.log('[DraftRoom] WARNING — no auth session; RLS will filter out all Realtime events')
+      }
+      if (cancelled) return
 
-          // Update picks for roster tracking; replace optimistic entry if present.
-          setPicks(prev => {
-            const without = prev.filter(
-              x => !(x.draft_session_id === incoming.draft_session_id && x.pick_number === incoming.pick_number),
+      channel = supabase
+        .channel(`draft-${session.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'draft_sessions', filter: `id=eq.${session.id}` },
+          (payload) => {
+            const next = payload.new as IDraftSession
+            console.log(
+              `[DraftRoom] realtime draft_sessions UPDATE — pick ${next.current_pick_number}, user ${next.current_user_id}, status ${next.status}`
             )
-            return [...without, incoming].sort((a, b) => a.pick_number - b.pick_number)
-          })
+            // Replacing the whole session re-renders the turn indicator and the
+            // upcoming-picks queue (both derive from it). The countdown-reset
+            // effect below fires when current_pick_number changes.
+            setSession(next)
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'draft_picks', filter: `draft_session_id=eq.${session.id}` },
+          (payload) => {
+            const incoming = payload.new as IDraftPick
+            console.log(
+              `[DraftRoom] realtime draft_picks INSERT — pick ${incoming.pick_number} by ${incoming.user_id}`
+            )
 
-          fetch('/api/draft/advance', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              draftSessionId: incoming.draft_session_id,
-              pickNumber: incoming.pick_number,
-            }),
-          }).catch(() => {})
-        },
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [session.id])
+            // Remove the player from the available list the moment the Realtime event
+            // arrives — covers picks made by other users and confirms our own picks.
+            setPickedPlayerIds(prev => {
+              if (prev.has(incoming.player_id)) return prev        // already removed optimistically
+              return new Set([...prev, incoming.player_id])
+            })
+
+            // Update picks for roster tracking; replace optimistic entry if present.
+            setPicks(prev => {
+              const without = prev.filter(
+                x => !(x.draft_session_id === incoming.draft_session_id && x.pick_number === incoming.pick_number),
+              )
+              return [...without, incoming].sort((a, b) => a.pick_number - b.pick_number)
+            })
+
+            // Fallback advance: covers picks made by OTHER clients in case their
+            // own advance call failed (e.g. they disconnected right after picking).
+            // advanceDraftTurn is conditional on current_pick_number, so duplicate
+            // calls are no-ops.
+            console.log(`[DraftRoom] calling /api/draft/advance (fallback) for pick ${incoming.pick_number}`)
+            fetch('/api/draft/advance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sessionId: incoming.draft_session_id,
+                pickNumber: incoming.pick_number,
+              }),
+            })
+              .then(r => r.json())
+              .then(json => console.log('[DraftRoom] fallback advance response:', json))
+              .catch(err => console.log('[DraftRoom] fallback advance failed:', err))
+          },
+        )
+        .subscribe((status, err) => {
+          // Must log SUBSCRIBED. CHANNEL_ERROR / TIMED_OUT → events cannot arrive.
+          console.log('[DraftRoom] channel status:', status, err ?? '')
+          if (cancelled) return
+
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            // supabase-js auto-rejoins after errors/timeouts; flag the drop so
+            // we resync when SUBSCRIBED comes back.
+            hadDisconnectRef.current = true
+            setIsConnected(false)
+          } else if (status === 'SUBSCRIBED') {
+            if (hadDisconnectRef.current) {
+              hadDisconnectRef.current = false
+              console.log('[DraftRoom] reconnected after drop — resyncing missed state')
+              resyncFromServer()
+            }
+            setIsConnected(true)
+          }
+        })
+    }
+
+    setup()
+
+    return () => {
+      cancelled = true
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [session.id, resyncFromServer])
 
   // ── Countdown ────────────────────────────────────────────
   useEffect(() => {
@@ -191,19 +332,83 @@ export default function DraftRoom({
     }
   }, [session.pick_deadline, session.status])
 
-  // ── Auto-pick on timeout ─────────────────────────────────
+  // ── Countdown sync on turn/deadline change ───────────────
+  // Snap the timer to the real remaining seconds the instant the session
+  // updates. On a normal turn change this is ~60; after a reconnect with a
+  // half-elapsed turn it's the true remainder — never a misleading reset.
   useEffect(() => {
-    if (countdown === 0 && session.status === 'active') {
-      if (autoPickFiredFor.current !== session.current_pick_number) {
-        autoPickFiredFor.current = session.current_pick_number
-        startPickTransition(async () => { await autoPick(session.id) })
-      }
+    const secs = session.pick_deadline
+      ? Math.max(0, Math.floor((new Date(session.pick_deadline).getTime() - Date.now()) / 1000))
+      : 60
+    console.log(`[DraftRoom] turn/deadline changed → pick ${session.current_pick_number}, countdown synced to ${secs}s`)
+    setCountdown(secs)
+  }, [session.current_pick_number, session.pick_deadline])
+
+  // ── Auto-pick on timeout ─────────────────────────────────
+  // Only the CURRENT TURN's client fires the autopick at 0 — no stampede of
+  // identical requests from every viewer. Everyone else schedules a safety
+  // fallback 3 seconds later: if the active user disconnected and their
+  // autopick never fired, POST /api/draft/advance runs the server-side
+  // autopick safety net and recovers the turn. The fallback timeout is
+  // cancelled automatically when the turn advances (deps change → cleanup).
+  useEffect(() => {
+    if (countdown !== 0 || session.status !== 'active') return
+    if (autoPickFiredFor.current === session.current_pick_number) return
+
+    // Computed inline (this effect sits above the derived-state block).
+    const isMyTurnNow = session.current_user_id === authUserId
+
+    if (isMyTurnNow) {
+      autoPickFiredFor.current = session.current_pick_number
+      console.log(
+        `[DraftRoom] countdown hit 0 on MY turn — calling /api/draft/autopick for pick ${session.current_pick_number}`
+      )
+      fetch('/api/draft/autopick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: session.id,
+          userId: session.current_user_id,
+          pickNumber: session.current_pick_number,
+        }),
+      })
+        .then(r => r.json())
+        .then(json => console.log('[DraftRoom] autopick response:', json))
+        .catch(err => console.log('[DraftRoom] autopick failed:', err))
+      return
     }
-  }, [countdown, session.status, session.current_pick_number, session.id])
+
+    // Not my turn — wait 3 extra seconds before nudging the server, giving
+    // the active user's autopick time to land first.
+    console.log(
+      `[DraftRoom] countdown hit 0 (not my turn) — scheduling safety fallback in 3s for pick ${session.current_pick_number}`
+    )
+    const fallback = setTimeout(() => {
+      autoPickFiredFor.current = session.current_pick_number
+      console.log(
+        `[DraftRoom] safety fallback firing — POST /api/draft/advance for pick ${session.current_pick_number}`
+      )
+      fetch('/api/draft/advance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id, pickNumber: session.current_pick_number }),
+      })
+        .then(r => r.json())
+        .then(json => console.log('[DraftRoom] safety fallback response:', json))
+        .catch(err => console.log('[DraftRoom] safety fallback failed:', err))
+    }, 3000)
+
+    return () => clearTimeout(fallback)
+  }, [countdown, session.status, session.current_pick_number, session.current_user_id, session.id, authUserId])
 
   // ── Derived state ─────────────────────────────────────────
-  const myPicks  = useMemo(() => picks.filter(p => p.user_id === currentUserId), [picks, currentUserId])
-  const isMyTurn = session.status === 'active' && session.current_user_id === currentUserId
+  const myPicks  = useMemo(() => picks.filter(p => p.user_id === authUserId), [picks, authUserId])
+  const isMyTurn = session.status === 'active' && session.current_user_id === authUserId
+
+  // Trace turn ownership on every render so mismatches are immediately visible.
+  console.log(
+    `[DraftRoom] render — session.current_user_id=${session.current_user_id} | authUserId=${authUserId} | isMyTurn=${isMyTurn}`
+  )
 
   const availablePlayers = useMemo(() => {
     const q = search.toLowerCase()
@@ -236,6 +441,10 @@ export default function DraftRoom({
     return by as Record<'GK' | 'DEF' | 'MID' | 'FWD', PlayerWithTeam[]>
   }, [myPicks, players])
 
+  // Next 12 picks, always anchored at the CURRENT pick number. Recomputes
+  // whenever session.current_pick_number changes (i.e. on every Realtime
+  // draft_sessions UPDATE) — if this log doesn't fire after a pick, the
+  // session state is stale, not the queue.
   const upcomingPicks = useMemo(() => {
     const result = []
     for (
@@ -245,6 +454,9 @@ export default function DraftRoom({
     ) {
       result.push({ pickNumber: p, userId: getPickUser(session.snake_order, p) })
     }
+    console.log(
+      `[DraftRoom] queue recalculated — window ${result[0]?.pickNumber ?? '-'}…${result[result.length - 1]?.pickNumber ?? '-'} (anchored at current_pick_number=${session.current_pick_number})`
+    )
     return result
   }, [session.current_pick_number, session.snake_order, totalPicks])
 
@@ -261,7 +473,12 @@ export default function DraftRoom({
 
   // Stable reference so PlayerCard.memo comparison stays valid across countdown ticks.
   const handlePick = useCallback((playerId: string) => {
-    if (!isMyTurn || isPicking) return
+    if (!isMyTurn || isPicking || !authUserId || !isConnected) {
+      console.log(
+        `[DraftRoom] handlePick BLOCKED — isMyTurn=${isMyTurn} isPicking=${isPicking} authUserId=${authUserId} isConnected=${isConnected}`
+      )
+      return
+    }
 
     // ── Optimistic player-list update ──────────────────────
     // Remove the player from the available list RIGHT NOW — before the
@@ -273,9 +490,11 @@ export default function DraftRoom({
     const sessionId  = session.id
 
     startPickTransition(async () => {
+      console.log(`[DraftRoom] makePick — pick ${pickNumber}, player ${playerId}`)
       const result = await makePick(sessionId, playerId)
 
       if (result?.error) {
+        console.log(`[DraftRoom] makePick FAILED: ${result.error}`)
         // Server rejected the pick — put the player back in the list.
         setPickedPlayerIds(prev => {
           const next = new Set(prev)
@@ -283,6 +502,7 @@ export default function DraftRoom({
           return next
         })
       } else {
+        console.log(`[DraftRoom] makePick OK — pick ${pickNumber} saved`)
         // Push an optimistic picks entry so the roster panel updates without
         // waiting for the Realtime round-trip. The Realtime INSERT handler
         // will replace it (same draft_session_id + pick_number) with the real row.
@@ -296,15 +516,29 @@ export default function DraftRoom({
               id:               `optimistic-${sessionId}-${pickNumber}`,
               draft_session_id: sessionId,
               pick_number:      pickNumber,
-              user_id:          currentUserId,
+              user_id:          authUserId,
               player_id:        playerId,
               picked_at:        new Date().toISOString(),
             } satisfies IDraftPick,
           ].sort((a, b) => a.pick_number - b.pick_number)
         })
+
+        // Advance the turn immediately after the pick is saved, without waiting
+        // for the Realtime INSERT event to propagate back. The INSERT handler
+        // still calls this as a fallback for other clients — advanceDraftTurn
+        // is idempotent so duplicate calls are harmless.
+        console.log(`[DraftRoom] calling /api/draft/advance (immediate) for pick ${pickNumber}`)
+        fetch('/api/draft/advance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, pickNumber }),
+        })
+          .then(r => r.json())
+          .then(json => console.log('[DraftRoom] immediate advance response:', json))
+          .catch(err => console.log('[DraftRoom] immediate advance failed:', err))
       }
     })
-  }, [isMyTurn, isPicking, session.current_pick_number, session.id, currentUserId])
+  }, [isMyTurn, isPicking, session.current_pick_number, session.id, authUserId, isConnected])
 
   const handleStartDraft = () => {
     startDraftTransition(async () => { await startDraft(session.id) })
@@ -326,9 +560,9 @@ export default function DraftRoom({
             {session.snake_order.map((uid, i) => (
               <div key={uid} className="flex items-center gap-3">
                 <span className="w-6 text-center text-sm font-bold text-green-400">{i + 1}</span>
-                <span className={`text-sm ${uid === currentUserId ? 'text-white font-semibold' : 'text-gray-400'}`}>
+                <span className={`text-sm ${uid === authUserId ? 'text-white font-semibold' : 'text-gray-400'}`}>
                   {memberMap.get(uid) ?? 'Mi Equipo'}
-                  {uid === currentUserId && <span className="ml-1.5 text-xs text-green-500">(tú)</span>}
+                  {uid === authUserId && <span className="ml-1.5 text-xs text-green-500">(tú)</span>}
                 </span>
               </div>
             ))}
@@ -372,6 +606,13 @@ export default function DraftRoom({
   // ── Active draft room ─────────────────────────────────────
   return (
     <div className="-mx-4 -my-8 sm:-mx-6 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+
+      {/* Connection-loss banner */}
+      {!isConnected && (
+        <div className="shrink-0 bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white">
+          Conexión perdida — reconectando...
+        </div>
+      )}
 
       {/* Top bar */}
       <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-gray-800/60 bg-gray-900/80">
@@ -422,8 +663,10 @@ export default function DraftRoom({
             </p>
           </div>
 
-          {/* Player list — only visiblePlayers are mounted */}
-          <div className="flex-1 overflow-y-auto">
+          {/* Player list — only visiblePlayers are mounted.
+              Hard-disabled when it's not this user's turn: pointer-events-none
+              kills every click before it reaches a card, opacity signals state. */}
+          <div className={`flex-1 overflow-y-auto ${isMyTurn && isConnected ? '' : 'pointer-events-none opacity-40'}`}>
             {availablePlayers.length === 0 ? (
               <div className="py-12 text-center text-sm text-gray-600">Sin jugadores disponibles</div>
             ) : (
@@ -432,7 +675,7 @@ export default function DraftRoom({
                   <PlayerCard
                     key={player.id}
                     player={player}
-                    isMyTurn={isMyTurn}
+                    isMyTurn={isMyTurn && isConnected}
                     isPicking={isPicking}
                     onPick={handlePick}
                   />
@@ -515,7 +758,7 @@ export default function DraftRoom({
           <div className="flex-1 overflow-y-auto">
             {upcomingPicks.map(({ pickNumber, userId }, idx) => {
               const isCurrentPick = pickNumber === session.current_pick_number
-              const isMe = userId === currentUserId
+              const isMe = userId === authUserId
               return (
                 <div
                   key={pickNumber}

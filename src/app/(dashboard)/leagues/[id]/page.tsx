@@ -3,6 +3,8 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { ILeaderboardEntry } from '@/types/db'
 import InviteLinkButton from '@/components/InviteLinkButton'
+import DeleteLeagueButton from './DeleteLeagueButton'
+import KickMemberButton from './KickMemberButton'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -108,12 +110,15 @@ export default async function LeagueDetailPage({ params }: Props) {
           {/* Action buttons */}
           <div className="flex shrink-0 flex-wrap gap-3">
             {isAdmin && (
-              <Link
-                href={`/leagues/${league.id}/admin`}
-                className="rounded-lg border border-gray-700/60 bg-gray-800/40 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-gray-500/60 hover:bg-gray-700/60"
-              >
-                ⚙️ Administrar Liga
-              </Link>
+              <>
+                <Link
+                  href={`/leagues/${league.id}/admin`}
+                  className="rounded-lg border border-gray-700/60 bg-gray-800/40 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-gray-500/60 hover:bg-gray-700/60"
+                >
+                  ⚙️ Administrar Liga
+                </Link>
+                <DeleteLeagueButton leagueId={league.id} />
+              </>
             )}
             <Link
               href={`/leagues/${league.id}/my-team`}
@@ -148,6 +153,7 @@ export default async function LeagueDetailPage({ params }: Props) {
               <th className="py-3 pr-6 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                 Pts
               </th>
+              {isAdmin && <th className="w-12 py-3 pr-4" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/40">
@@ -185,6 +191,17 @@ export default async function LeagueDetailPage({ params }: Props) {
                       {entry.total_points}
                     </span>
                   </td>
+                  {isAdmin && (
+                    <td className="py-3.5 pr-4 text-right">
+                      {entry.user_id !== league.admin_user_id && (
+                        <KickMemberButton
+                          leagueId={league.id}
+                          memberUserId={entry.user_id}
+                          teamName={entry.team_name ?? 'Mi Equipo'}
+                        />
+                      )}
+                    </td>
+                  )}
                 </tr>
               )
             })}

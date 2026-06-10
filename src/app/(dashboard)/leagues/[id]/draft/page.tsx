@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import { finalizeDraft } from '@/lib/draft/advance'
 import DraftRoom from './DraftRoom'
 
 type Props = { params: Promise<{ id: string }> }
@@ -33,6 +34,16 @@ export default async function DraftPage({ params }: Props) {
     .eq('league_id', id)
     .maybeSingle()
   if (!draftSession) redirect(`/leagues/${id}/admin`)
+
+  // Self-heal: if the draft completed but the rosters were never created
+  // (e.g. the finalize insert was rejected by RLS), retry on page load.
+  // finalizeDraft is idempotent — it no-ops if roster rows already exist.
+  if (draftSession.status === 'completed') {
+    const result = await finalizeDraft(supabase, draftSession.id, id)
+    if (result.error) {
+      console.log(`[draft/page] finalize retry failed: ${result.error}`)
+    }
+  }
 
   // Initial data — kept live via Realtime inside DraftRoom
   const [{ data: picks }, { data: players }, { data: members }] = await Promise.all([

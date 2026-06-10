@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import LineupManager from './LineupManager'
+import RenameTeamForm from './RenameTeamForm'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -326,7 +327,7 @@ export default async function MyTeamPage({ params }: Props) {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm text-gray-500">{league.name}</p>
-            <h1 className="mt-1 text-2xl font-bold text-white">{membership.team_name ?? 'Mi Equipo'}</h1>
+            <RenameTeamForm leagueId={id} initialName={membership.team_name ?? 'Mi Equipo'} />
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:min-w-64">

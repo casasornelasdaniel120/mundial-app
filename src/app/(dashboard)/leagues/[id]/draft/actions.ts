@@ -3,11 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { IDraftSession } from '@/types/db'
 import { advanceDraftTurn } from '@/lib/draft/advance'
-
-// ── Constants ───────────────────────────────────────────────
-const ROSTER_LIMITS = { GK: 2, DEF: 6, MID: 5, FWD: 6 } as const
-
-type Position = keyof typeof ROSTER_LIMITS
+import { performAutoPick } from '@/lib/draft/autopick'
 
 // ── Core pick processor ─────────────────────────────────────
 async function applyPick(
@@ -61,7 +57,20 @@ export async function makePick(
 
   if (!session) return { error: 'Sesión no encontrada.' }
   if (session.status !== 'active') return { error: 'El draft no está activo.' }
-  if (session.current_user_id !== user.id) return { error: 'No es tu turno.' }
+
+  // ── 403 GUARD ──────────────────────────────────────────────
+  // The pick is ONLY inserted if the session's current_user_id matches the
+  // authenticated user. This runs server-side against a fresh session read,
+  // so it holds even if the client UI was bypassed entirely.
+  if (session.current_user_id !== user.id) {
+    console.log(
+      `[draft/makePick] 403 FORBIDDEN — user ${user.id} tried to pick but turn belongs to ${session.current_user_id} (pick ${session.current_pick_number})`
+    )
+    return { error: 'No es tu turno.' }
+  }
+  console.log(
+    `[draft/makePick] turn verified — user ${user.id} owns pick ${session.current_pick_number}`
+  )
 
   // Verify player is not already picked
   const { data: taken } = await supabase
@@ -80,71 +89,7 @@ export async function autoPick(draftSessionId: string): Promise<{ error?: string
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado.' }
 
-  const { data: session } = await supabase
-    .from('draft_sessions')
-    .select('*')
-    .eq('id', draftSessionId)
-    .single()
-
-  if (!session || session.status !== 'active') return {}
-
-  // Only run if deadline has genuinely passed
-  if (session.pick_deadline && new Date(session.pick_deadline) > new Date()) return {}
-
-  // Idempotency: bail if a pick was already recorded for this slot
-  const { data: existing } = await supabase
-    .from('draft_picks')
-    .select('id')
-    .eq('draft_session_id', draftSessionId)
-    .eq('pick_number', session.current_pick_number)
-    .maybeSingle()
-  if (existing) return {}
-
-  const pickerId = session.current_user_id as string
-
-  // Count positions already picked by this user
-  const { data: myPickIds } = await supabase
-    .from('draft_picks')
-    .select('player_id')
-    .eq('draft_session_id', draftSessionId)
-    .eq('user_id', pickerId)
-
-  const myPlayerIds = myPickIds?.map(p => p.player_id as string) ?? []
-  const posCounts: Record<string, number> = { GK: 0, DEF: 0, MID: 0, FWD: 0 }
-
-  if (myPlayerIds.length > 0) {
-    const { data: myPlayers } = await supabase
-      .from('players')
-      .select('position')
-      .in('id', myPlayerIds)
-    for (const p of myPlayers ?? []) {
-      posCounts[p.position as string] = (posCounts[p.position as string] ?? 0) + 1
-    }
-  }
-
-  // Determine what position is needed next
-  const needed: Position =
-    posCounts.GK < ROSTER_LIMITS.GK ? 'GK' :
-    posCounts.DEF < ROSTER_LIMITS.DEF ? 'DEF' :
-    posCounts.MID < ROSTER_LIMITS.MID ? 'MID' : 'FWD'
-
-  // All already-picked player IDs (across all teams)
-  const { data: allPicks } = await supabase
-    .from('draft_picks')
-    .select('player_id')
-    .eq('draft_session_id', draftSessionId)
-
-  const pickedIds = new Set(allPicks?.map(p => p.player_id as string) ?? [])
-
-  // Best available player by value for the needed position
-  const { data: candidates } = await supabase
-    .from('players')
-    .select('id, value')
-    .eq('position', needed)
-    .order('value', { ascending: false })
-
-  const best = (candidates ?? []).find(p => !pickedIds.has(p.id as string))
-  if (!best) return { error: 'Sin jugadores disponibles para auto-pick.' }
-
-  return applyPick(supabase, session as IDraftSession, pickerId, best.id as string)
+  // Shared implementation with /api/draft/autopick — see src/lib/draft/autopick.ts
+  const result = await performAutoPick(supabase, draftSessionId)
+  return result.error ? { error: result.error } : {}
 }

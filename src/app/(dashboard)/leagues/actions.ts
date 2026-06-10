@@ -67,6 +67,10 @@ export async function joinLeague(
   if (!user) redirect('/login')
 
   const inviteCode = (formData.get('invite_code') as string).trim()
+  const teamName = (formData.get('team_name') as string ?? '').trim()
+
+  if (!teamName) return { error: 'El nombre del equipo es obligatorio.' }
+  if (teamName.length > 30) return { error: 'El nombre del equipo no puede superar 30 caracteres.' }
 
   const { data: league, error: leagueError } = await supabase
     .from('leagues')
@@ -89,7 +93,7 @@ export async function joinLeague(
   const { error: memberError } = await supabase.from('league_members').insert({
     league_id: league.id,
     user_id: user.id,
-    team_name: 'My Team',
+    team_name: teamName,
   })
 
   if (memberError) {

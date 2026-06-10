@@ -26,23 +26,18 @@ type PendingSwap = {
   isStarting: boolean
 }
 
-type PitchSpot = {
-  x: number
-  y: number
-}
+const SECTIONS: Array<{ position: Position; label: string }> = [
+  { position: 'GK', label: 'Porteros' },
+  { position: 'DEF', label: 'Defensas' },
+  { position: 'MID', label: 'Mediocampistas' },
+  { position: 'FWD', label: 'Delanteros' },
+]
 
 const POSITION_COLORS: Record<Position, string> = {
-  GK: 'bg-yellow-900/70 text-yellow-200',
-  DEF: 'bg-blue-900/70 text-blue-200',
-  MID: 'bg-green-900/70 text-green-200',
-  FWD: 'bg-red-900/70 text-red-200',
-}
-
-const LINE_Y: Record<Position, number> = {
-  FWD: 18,
-  MID: 40,
-  DEF: 62,
-  GK: 84,
+  GK: 'bg-yellow-900/50 text-yellow-300',
+  DEF: 'bg-blue-900/50 text-blue-300',
+  MID: 'bg-green-900/50 text-green-300',
+  FWD: 'bg-red-900/50 text-red-300',
 }
 
 function getInitials(name: string): string {
@@ -54,34 +49,38 @@ function getInitials(name: string): string {
     .toUpperCase()
 }
 
-function getLineSpots(players: LineupPlayer[], position: Position): Array<LineupPlayer & PitchSpot> {
-  const line = players.filter(player => player.position === position)
-  const gap = 100 / (line.length + 1)
-
-  return line.map((player, index) => ({
-    ...player,
-    x: gap * (index + 1),
-    y: LINE_Y[position],
-  }))
+function formatPoints(points: number): string {
+  return Number.isInteger(points) ? String(points) : points.toFixed(1)
 }
 
-function PlayerAvatar({ player, size = 'lg' }: { player: LineupPlayer; size?: 'sm' | 'lg' }) {
-  const sizeClass = size === 'lg' ? 'h-14 w-14 text-sm' : 'h-11 w-11 text-xs'
-
+function PlayerAvatar({ player }: { player: LineupPlayer }) {
   if (player.photoUrl) {
     return (
       <span
-        className={`${sizeClass} block rounded-full border border-white/20 bg-gray-800 bg-cover bg-center shadow-lg`}
+        className="block h-10 w-10 shrink-0 rounded-full border border-gray-700/60 bg-gray-800 bg-cover bg-center"
         style={{ backgroundImage: `url(${player.photoUrl})` }}
       />
     )
   }
 
   return (
-    <span className={`${sizeClass} flex items-center justify-center rounded-full border border-white/20 bg-gray-800 font-bold text-gray-200 shadow-lg`}>
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-700/60 bg-gray-800 text-xs font-bold text-gray-200">
       {getInitials(player.name) || player.position}
     </span>
   )
+}
+
+function TeamFlag({ team }: { team: Team | null }) {
+  if (team?.flag_url) {
+    return (
+      <span
+        title={team.name}
+        className="h-4 w-6 shrink-0 rounded-sm bg-cover bg-center"
+        style={{ backgroundImage: `url(${team.flag_url})` }}
+      />
+    )
+  }
+  return <span className="h-4 w-6 shrink-0 rounded-sm bg-gray-700" />
 }
 
 export default function LineupManager({
@@ -92,54 +91,44 @@ export default function LineupManager({
   players: LineupPlayer[]
 }) {
   const [players, setPlayers] = useState(initialPlayers)
-  const [selectedStarter, setSelectedStarter] = useState<string | null>(null)
+  const [openSwapFor, setOpenSwapFor] = useState<string | null>(null)
   const [pendingSwaps, setPendingSwaps] = useState<PendingSwap[]>([])
   const [toast, setToast] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, startSaveTransition] = useTransition()
 
-  const starters = useMemo(
-    () => players.filter(player => player.isStarting),
-    [players]
+  const pendingIds = useMemo(
+    () => new Set(pendingSwaps.map(swap => swap.rosterId)),
+    [pendingSwaps]
   )
-  const bench = useMemo(
-    () => players.filter(player => !player.isStarting),
-    [players]
-  )
-  const selectedPlayer = starters.find(player => player.rosterId === selectedStarter) ?? null
-  const positionedStarters = [
-    ...getLineSpots(starters, 'FWD'),
-    ...getLineSpots(starters, 'MID'),
-    ...getLineSpots(starters, 'DEF'),
-    ...getLineSpots(starters, 'GK'),
-  ]
 
-  function addPendingSwap(starterId: string, benchId: string) {
+  // Players of the same position on the opposite side (TIT ↔ SUP) — the only
+  // valid swap targets for a given row.
+  function swapCandidates(player: LineupPlayer): LineupPlayer[] {
+    return players.filter(
+      item =>
+        item.position === player.position &&
+        item.isStarting !== player.isStarting
+    )
+  }
+
+  function handleSwap(a: LineupPlayer, b: LineupPlayer) {
+    // Exchange is_starting values locally (optimistic)
+    setPlayers(current =>
+      current.map(item => {
+        if (item.rosterId === a.rosterId) return { ...item, isStarting: b.isStarting }
+        if (item.rosterId === b.rosterId) return { ...item, isStarting: a.isStarting }
+        return item
+      })
+    )
+    // Record both sides in the pending batch (latest value per rosterId wins)
     setPendingSwaps(prev => {
-      const next = new Map(prev.map(update => [update.rosterId, update.isStarting]))
-      next.set(starterId, false)
-      next.set(benchId, true)
-
+      const next = new Map(prev.map(swap => [swap.rosterId, swap.isStarting]))
+      next.set(a.rosterId, b.isStarting)
+      next.set(b.rosterId, a.isStarting)
       return Array.from(next, ([rosterId, isStarting]) => ({ rosterId, isStarting }))
     })
-  }
-
-  function handleStarterClick(player: LineupPlayer) {
-    setToast(null)
-    setError(null)
-    setSelectedStarter(current => current === player.rosterId ? null : player.rosterId)
-  }
-
-  function handleBenchClick(player: LineupPlayer) {
-    if (!selectedPlayer || selectedPlayer.position !== player.position) return
-
-    setPlayers(current => current.map(item => {
-      if (item.rosterId === selectedPlayer.rosterId) return { ...item, isStarting: false }
-      if (item.rosterId === player.rosterId) return { ...item, isStarting: true }
-      return item
-    }))
-    addPendingSwap(selectedPlayer.rosterId, player.rosterId)
-    setSelectedStarter(null)
+    setOpenSwapFor(null)
     setToast(null)
     setError(null)
   }
@@ -152,41 +141,142 @@ export default function LineupManager({
       const result = await saveLineup(leagueId, pendingSwaps)
 
       if (!result.ok) {
-        setError(result.error ?? 'No se pudo guardar la alineacion.')
+        setError(result.error ?? 'No se pudo guardar la alineación.')
         return
       }
 
       setPendingSwaps([])
-      setToast('Alineacion guardada.')
+      setToast('Alineación guardada.')
       window.setTimeout(() => setToast(null), 2500)
     })
   }
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-white">Alineacion</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Selecciona un titular y cambialo por un suplente de la misma posicion.
-          </p>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold text-white">Alineación</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Usa «Cambiar» para intercambiar un titular por un suplente de la misma posición.
+        </p>
+      </div>
 
-        <div className="flex items-center gap-3">
-          {pendingSwaps.length > 0 && (
-            <span className="text-xs text-yellow-300">
-              {pendingSwaps.length} cambio{pendingSwaps.length === 1 ? '' : 's'} pendiente{pendingSwaps.length === 1 ? '' : 's'}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!pendingSwaps.length || isSaving}
-            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
-          >
-            {isSaving ? 'Guardando...' : 'Guardar Alineacion'}
-          </button>
-        </div>
+      <div className="overflow-hidden rounded-2xl border border-gray-800/60 bg-gray-900/60">
+        {SECTIONS.map(({ position, label }) => {
+          const sectionPlayers = [
+            ...players.filter(p => p.position === position && p.isStarting),
+            ...players.filter(p => p.position === position && !p.isStarting),
+          ]
+
+          if (!sectionPlayers.length) return null
+
+          return (
+            <div key={position}>
+              <div className="border-b border-gray-800/60 bg-gray-950/40 px-4 py-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {label}
+                </h3>
+              </div>
+
+              <div className="divide-y divide-gray-800/40">
+                {sectionPlayers.map(player => {
+                  const candidates = swapCandidates(player)
+                  const isOpen = openSwapFor === player.rosterId
+                  const hasPendingChange = pendingIds.has(player.rosterId)
+
+                  return (
+                    <div key={player.rosterId}>
+                      <div
+                        className={`flex items-center gap-3 px-4 py-3 ${
+                          hasPendingChange ? 'bg-yellow-950/20' : ''
+                        }`}
+                      >
+                        <PlayerAvatar player={player} />
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-medium text-white">{player.name}</p>
+                            {hasPendingChange && (
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-400" title="Cambio pendiente" />
+                            )}
+                          </div>
+                          <p className="mt-0.5 truncate text-xs text-gray-500">
+                            {player.team?.name ?? '—'}
+                          </p>
+                        </div>
+
+                        <TeamFlag team={player.team} />
+
+                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${POSITION_COLORS[player.position]}`}>
+                          {player.position}
+                        </span>
+
+                        <span
+                          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                            player.isStarting
+                              ? 'bg-green-900/60 text-green-300'
+                              : 'bg-gray-800 text-gray-400'
+                          }`}
+                        >
+                          {player.isStarting ? 'TIT' : 'SUP'}
+                        </span>
+
+                        <span className="w-12 shrink-0 text-right text-sm font-semibold tabular-nums text-green-400">
+                          {formatPoints(player.totalPoints)}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setToast(null)
+                            setError(null)
+                            setOpenSwapFor(current => (current === player.rosterId ? null : player.rosterId))
+                          }}
+                          disabled={!candidates.length}
+                          className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            isOpen
+                              ? 'border-yellow-500/60 bg-yellow-500/10 text-yellow-300'
+                              : 'border-gray-700/60 text-gray-300 hover:border-gray-500/60 hover:bg-gray-800/60'
+                          } disabled:cursor-not-allowed disabled:opacity-40`}
+                        >
+                          {isOpen ? 'Cancelar' : 'Cambiar'}
+                        </button>
+                      </div>
+
+                      {/* Inline swap panel: opposite-side players of the same position */}
+                      {isOpen && (
+                        <div className="border-t border-gray-800/50 bg-gray-950/50 px-4 py-3">
+                          <p className="mb-2 text-xs text-gray-500">
+                            Cambiar a <span className="font-medium text-gray-300">{player.name}</span> por:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {candidates.map(candidate => (
+                              <button
+                                key={candidate.rosterId}
+                                type="button"
+                                onClick={() => handleSwap(player, candidate)}
+                                className="flex items-center gap-2 rounded-lg border border-gray-700/60 bg-gray-900/80 px-3 py-2 text-left transition-colors hover:border-green-600/60 hover:bg-green-950/30"
+                              >
+                                <PlayerAvatar player={candidate} />
+                                <span className="min-w-0">
+                                  <span className="block max-w-36 truncate text-xs font-medium text-white">
+                                    {candidate.name}
+                                  </span>
+                                  <span className="mt-0.5 block text-[10px] text-gray-500">
+                                    {candidate.isStarting ? 'TIT' : 'SUP'} · {formatPoints(candidate.totalPoints)} pts
+                                  </span>
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {(toast || error) && (
@@ -201,106 +291,20 @@ export default function LineupManager({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-green-900/50 bg-green-950/40">
-        <div className="relative aspect-[4/5] min-h-[560px] w-full overflow-hidden bg-green-900 sm:aspect-[16/10] sm:min-h-[620px]">
-          <svg
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-          >
-            <rect width="100" height="100" fill="#0b5f36" />
-            <path d="M0 0h100v100H0z" fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="0.7" />
-            <path d="M50 0v100" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
-            <circle cx="50" cy="50" r="10" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
-            <circle cx="50" cy="50" r="1.2" fill="rgba(255,255,255,.35)" />
-            <path d="M25 0v14h50V0" fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="0.5" />
-            <path d="M35 0v6h30V0" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
-            <path d="M25 100V86h50v14" fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="0.5" />
-            <path d="M35 100v-6h30v6" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
-            {Array.from({ length: 10 }).map((_, index) => (
-              <rect
-                key={index}
-                x={index * 10}
-                y="0"
-                width="10"
-                height="100"
-                fill={index % 2 === 0 ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.04)'}
-              />
-            ))}
-          </svg>
-
-          {positionedStarters.map(player => {
-            const isSelected = selectedStarter === player.rosterId
-
-            return (
-              <button
-                key={player.rosterId}
-                type="button"
-                onClick={() => handleStarterClick(player)}
-                className="absolute flex w-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1 text-center transition-transform hover:scale-105"
-                style={{ left: `${player.x}%`, top: `${player.y}%` }}
-              >
-                <span className={`rounded-full p-1 ${isSelected ? 'bg-yellow-300 shadow-lg shadow-yellow-950' : 'bg-black/25'}`}>
-                  <PlayerAvatar player={player} />
-                </span>
-                <span className="max-w-24 truncate rounded bg-black/45 px-2 py-0.5 text-xs font-semibold text-white">
-                  {player.name}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-gray-800/60 bg-gray-900/60 p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-white">Banca</h3>
-          {selectedPlayer && (
-            <span className="text-xs text-yellow-300">
-              Selecciona un {selectedPlayer.position}
-            </span>
-          )}
-        </div>
-
-        {bench.length ? (
-          <div className="flex gap-3 overflow-x-auto pb-1">
-            {bench.map(player => {
-              const isSelectable = Boolean(selectedPlayer && selectedPlayer.position === player.position)
-
-              return (
-                <button
-                  key={player.rosterId}
-                  type="button"
-                  onClick={() => handleBenchClick(player)}
-                  disabled={!isSelectable}
-                  className={`flex min-w-36 flex-col items-center gap-2 rounded-xl border p-3 text-center transition-colors ${
-                    isSelectable
-                      ? 'border-yellow-300 bg-yellow-300/10 text-white hover:bg-yellow-300/20'
-                      : 'border-gray-800/60 bg-gray-950/40 text-gray-500'
-                  }`}
-                >
-                  <PlayerAvatar player={player} size="sm" />
-                  <div className="min-w-0">
-                    <p className="max-w-28 truncate text-xs font-semibold">{player.name}</p>
-                    <div className="mt-1 flex justify-center gap-1">
-                      <span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-gray-400">
-                        SUP
-                      </span>
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${POSITION_COLORS[player.position]}`}>
-                        {player.position}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-gray-800/70 p-4 text-sm text-gray-600">
-            Todavia no hay suplentes en tu roster.
-          </div>
+      <div className="flex items-center justify-end gap-3">
+        {pendingSwaps.length > 0 && (
+          <span className="text-xs text-yellow-300">
+            {pendingSwaps.length} cambio{pendingSwaps.length === 1 ? '' : 's'} pendiente{pendingSwaps.length === 1 ? '' : 's'}
+          </span>
         )}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!pendingSwaps.length || isSaving}
+          className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
+        >
+          {isSaving ? 'Guardando...' : 'Guardar Alineación'}
+        </button>
       </div>
     </section>
   )
