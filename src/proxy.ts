@@ -39,18 +39,27 @@ export async function proxy(request: NextRequest) {
   const isProtected = PROTECTED_PREFIXES.some(p => pathname.startsWith(p))
   const isAuthRoute = AUTH_PREFIXES.some(p => pathname.startsWith(p))
 
+  // Any response other than supabaseResponse MUST carry over the auth cookies
+  // getUser() just wrote. With refresh-token rotation, dropping them strands
+  // the browser with an already-consumed refresh token → forced re-login.
+  const redirectWithCookies = (pathname: string) => {
+    const url = request.nextUrl.clone()
+    url.pathname = pathname
+    const response = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach(cookie =>
+      response.cookies.set(cookie)
+    )
+    return response
+  }
+
   // Unauthenticated user trying to access a protected route → login
   if (!user && isProtected) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+    return redirectWithCookies('/login')
   }
 
   // Authenticated user hitting a login/register page → app home
   if (user && isAuthRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/leagues'
-    return NextResponse.redirect(url)
+    return redirectWithCookies('/leagues')
   }
 
   return supabaseResponse

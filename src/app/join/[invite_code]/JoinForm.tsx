@@ -16,7 +16,7 @@ export default function JoinForm({ inviteCode, leagueName }: Props) {
       <input type="hidden" name="invite_code" value={inviteCode} />
 
       <div>
-        <label htmlFor="team_name" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="team_name" className="block text-sm font-medium text-gray-400 mb-1">
           Nombre de tu equipo
         </label>
         <input
@@ -26,18 +26,18 @@ export default function JoinForm({ inviteCode, leagueName }: Props) {
           required
           maxLength={30}
           placeholder="Ej. Los Campeones"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-green-600 focus:outline-none"
+          className="w-full rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-2.5 text-base text-white placeholder-gray-600 transition-colors focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 sm:py-2 sm:text-sm"
         />
       </div>
 
       {state?.error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{state.error}</p>
+        <p className="rounded-lg border border-red-800/40 bg-red-950/40 px-3 py-2 text-sm text-red-400">{state.error}</p>
       )}
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+        className="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-950 hover:bg-green-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors sm:py-2.5"
       >
         {isPending ? 'Uniéndose…' : `Unirse a "${leagueName}"`}
       </button>

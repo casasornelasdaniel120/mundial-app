@@ -113,7 +113,7 @@ export default async function LeagueDetailPage({ params }: Props) {
               <>
                 <Link
                   href={`/leagues/${league.id}/admin`}
-                  className="rounded-lg border border-gray-700/60 bg-gray-800/40 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-gray-500/60 hover:bg-gray-700/60"
+                  className="rounded-lg border border-gray-700/60 bg-gray-800/40 px-4 py-2.5 text-sm font-medium text-gray-200 transition-colors hover:border-gray-500/60 hover:bg-gray-700/60 sm:py-2"
                 >
                   ⚙️ Administrar Liga
                 </Link>
@@ -122,7 +122,7 @@ export default async function LeagueDetailPage({ params }: Props) {
             )}
             <Link
               href={`/leagues/${league.id}/my-team`}
-              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500"
+              className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500 sm:py-2"
             >
               ⚽ Mi Equipo
             </Link>
@@ -141,16 +141,19 @@ export default async function LeagueDetailPage({ params }: Props) {
           )}
         </div>
 
+        {/* overflow-x-auto: the parent card is overflow-hidden, so a too-wide
+            table would be clipped (not scrollable) without this wrapper. */}
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-800/60">
-              <th className="w-14 py-3 pl-6 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="w-12 py-3 pl-4 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:w-14 sm:pl-6">
                 #
               </th>
               <th className="py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                 Equipo
               </th>
-              <th className="py-3 pr-6 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="py-3 pr-4 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:pr-6">
                 Pts
               </th>
               {isAdmin && <th className="w-12 py-3 pr-4" />}
@@ -169,7 +172,7 @@ export default async function LeagueDetailPage({ params }: Props) {
                       : 'transition-colors hover:bg-gray-800/30'
                   }
                 >
-                  <td className="py-3.5 pl-6">
+                  <td className="py-3.5 pl-4 sm:pl-6">
                     <span className={`text-sm ${RANK_COLORS[rank] ?? 'text-gray-500'}`}>
                       {rank}
                     </span>
@@ -186,7 +189,7 @@ export default async function LeagueDetailPage({ params }: Props) {
                       )}
                     </div>
                   </td>
-                  <td className="py-3.5 pr-6 text-right">
+                  <td className="py-3.5 pr-4 text-right sm:pr-6">
                     <span className={`text-sm font-semibold tabular-nums ${isMe ? 'text-green-400' : 'text-gray-300'}`}>
                       {entry.total_points}
                     </span>
@@ -207,6 +210,7 @@ export default async function LeagueDetailPage({ params }: Props) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

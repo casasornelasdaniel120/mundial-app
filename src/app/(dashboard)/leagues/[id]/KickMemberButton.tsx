@@ -34,7 +34,7 @@ export default function KickMemberButton({
         type="button"
         onClick={() => { setError(null); setShowModal(true) }}
         title={`Expulsar a ${teamName}`}
-        className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold text-red-500/70 transition-colors hover:bg-red-950/50 hover:text-red-400"
+        className="flex h-10 w-10 items-center justify-center rounded-md text-sm font-bold text-red-500/70 transition-colors hover:bg-red-950/50 hover:text-red-400 sm:h-8 sm:w-8 sm:text-xs"
       >
         ✕
       </button>

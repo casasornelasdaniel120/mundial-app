@@ -22,11 +22,13 @@ No test suite exists yet.
 ---
 
 ## Deployment
-- **Hosted on Vercel** — production URL: _(fill in — not recorded in the repo)_
+- **Hosted on Vercel** — production URL: https://mundial-app-umber.vercel.app (project `mundial-app`)
 - **Required environment variables** (Vercel → Project Settings → Environment Variables, mirroring `.env.local`):
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `API_FOOTBALL_KEY` — server-side only, never `NEXT_PUBLIC_`
+  - `NEXT_PUBLIC_APP_URL` — public origin used for auth redirects (`emailRedirectTo`, callback). `http://localhost:3000` in `.env.local`, the Vercel production URL in production
+- **Supabase Dashboard → Authentication → URL Configuration:** Site URL and Redirect URLs must match the production URL exactly (include `https://mundial-app-umber.vercel.app/auth/callback` in Redirect URLs) — otherwise confirmation emails and OAuth land on localhost
 - Per-environment manual steps: run migrations in the SQL Editor and enable Realtime for `draft_sessions`/`draft_picks` (see Migrations below)
 - ⚠️ Before going public: sync routes have no auth guard and the draft flow still has debug `console.log` tracing (see Known Technical Debt)
 
@@ -120,11 +122,11 @@ Each feature group co-locates its mutations in `actions.ts` with `'use server'`.
 ### Turn advancement flow
 1. `makePick` validates `current_user_id === auth user` server-side (fresh session read) before inserting — out-of-turn picks are rejected regardless of UI state
 2. After the pick insert, `applyPick` advances the turn server-side; the picking client also POSTs `/api/draft/advance` immediately, and every client POSTs it on the Realtime `draft_picks` INSERT as a fallback
-3. On timer expiry, every client POSTs `/api/draft/autopick` with `{ sessionId, userId }`; the server resolves the race via the `UNIQUE(draft_session_id, pick_number)` constraint
+3. On timer expiry, **only the current turn's client** POSTs `/api/draft/autopick` with `{ sessionId, userId, pickNumber }` (no stampede). Every other client schedules a **3-second safety fallback** that POSTs `/api/draft/advance` (covers the active user being disconnected); the timeout is cancelled when the turn advances. Any residual race is resolved server-side via the `UNIQUE(draft_session_id, pick_number)` constraint
 
 ### Realtime subscription
 `DraftRoom.tsx` uses a **single channel** (`draft-${sessionId}`) with **two `postgres_changes` listeners**:
-- **UPDATE on `draft_sessions`** filtered by `id=eq.${sessionId}` — replaces local session state; drives the turn indicator, upcoming-picks queue, and a countdown reset to 60 (effect watching `current_pick_number`)
+- **UPDATE on `draft_sessions`** filtered by `id=eq.${sessionId}` — replaces local session state; drives the turn indicator, upcoming-picks queue, and the countdown. The countdown is **derived from `pick_deadline`** (synced via an effect watching `current_pick_number`/`pick_deadline`), never reset to a hardcoded 60 — so it stays correct after reconnects mid-turn
 - **INSERT on `draft_picks`** filtered by `draft_session_id=eq.${sessionId}` — removes the player from every client's available list and updates the roster panel
 
 **Realtime requirements (per environment):** both `draft_sessions` and `draft_picks` must be in the `supabase_realtime` publication (Dashboard → Database → Replication, or `ALTER PUBLICATION supabase_realtime ADD TABLE …`). Because both tables have RLS, the client calls `supabase.realtime.setAuth(accessToken)` **before** subscribing — without it the channel reports SUBSCRIBED but events are silently filtered out.
@@ -132,6 +134,12 @@ Each feature group co-locates its mutations in `actions.ts` with `'use server'`.
 Two separate state values for optimistic UI:
 - `pickedPlayerIds: Set<string>` — updated immediately on click AND on every Realtime INSERT; used to filter the player list
 - `picks: IDraftPick[]` — updated after `makePick` resolves (optimistic) OR on Realtime INSERT; drives the roster panel
+
+### Reconnection handling
+The `.subscribe()` status callback tracks channel health: `CHANNEL_ERROR` / `TIMED_OUT` / `CLOSED` set `isConnected=false` and flag the drop (`hadDisconnectRef`); supabase-js auto-rejoins. When `SUBSCRIBED` returns after a flagged drop, `resyncFromServer()` runs:
+1. Re-fetches the session and **all** picks from the server, replacing local state wholesale (recovers picks missed while offline) and rebuilding `pickedPlayerIds`
+2. Syncs the countdown from the real `pick_deadline` remainder (the turn may be half-elapsed)
+3. POSTs `/api/draft/autopick` as a recovery check — a no-op server-side unless the deadline actually expired while offline
 
 ### Roster (19 players per team)
 | Position | Starters | Bench | Total |
@@ -202,17 +210,17 @@ All DB interfaces are in `src/types/db.ts` (prefixed with `I`: `ILeague`, `IPlay
 | Landing page | ✅ Done |
 | Auth (register, login, logout, callback) | ✅ Done |
 | League create / invite / join | ✅ Done |
-| League detail + leaderboard | ✅ Done |
+| League detail + leaderboard | ✅ Done (UI; standings stay at 0 points until the scoring engine exists) |
 | Admin panel (scoring rules display, draft init) | ✅ Done |
 | API-Football sync routes | ✅ Done |
 | Snake draft room (Realtime) | ✅ Done — turn advance, auto-pick, and live sync verified working |
 | Team builder post-draft (`/my-team`) | ✅ Done |
-| Live scoring engine (match stats → `total_points`) | ⬜ Pending |
+| Live scoring engine (match stats → `total_points` → live leaderboard) | ⬜ Pending |
 | Admin scoring rules editor (CRUD) | ⬜ Pending |
 | Admin match stats entry | ⬜ Pending |
 | Per-matchday points breakdown (league detail) | ⬜ Pending |
 | Player pricing model (dynamic values) | ⬜ Pending |
-| Mobile layout for draft room | ⬜ Pending |
+| Mobile layout for draft room | ✅ Done — below `md` a sticky two-tab bar ('Jugadores' = player list, 'Cola' = turn indicator + queue) switches panels; roster bar always fixed at bottom; desktop keeps the 3-column grid |
 
 ---
 

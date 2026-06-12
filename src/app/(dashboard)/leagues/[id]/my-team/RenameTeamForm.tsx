@@ -60,7 +60,7 @@ export default function RenameTeamForm({
               if (e.key === 'Enter') handleSave()
               if (e.key === 'Escape') handleCancel()
             }}
-            className="rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-1.5 text-xl font-bold text-white placeholder-gray-600 focus:border-green-500 focus:outline-none"
+            className="w-full min-w-0 rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-1.5 text-xl font-bold text-white placeholder-gray-600 focus:border-green-500 focus:outline-none sm:w-auto"
           />
           <button
             type="button"
@@ -90,7 +90,7 @@ export default function RenameTeamForm({
       <button
         type="button"
         onClick={handleEdit}
-        className="rounded-md px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-800/50 hover:text-gray-300"
+        className="rounded-md px-2.5 py-2 text-xs text-gray-500 transition-colors hover:bg-gray-800/50 hover:text-gray-300 sm:py-1"
       >
         Cambiar nombre
       </button>

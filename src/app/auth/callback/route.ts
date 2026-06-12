@@ -10,15 +10,19 @@ export async function GET(request: NextRequest) {
   // Optional ?next= param to redirect somewhere specific after auth
   const next = searchParams.get('next') ?? '/leagues'
 
+  // Behind Vercel's proxy, request.url's origin can be the internal host.
+  // Prefer the configured public URL; fall back to the request origin in dev.
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? origin
+
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      return NextResponse.redirect(new URL(next, origin))
+      return NextResponse.redirect(new URL(next, baseUrl))
     }
   }
 
   // Something went wrong — send back to login with an error hint
-  return NextResponse.redirect(new URL('/login?error=auth_callback_failed', origin))
+  return NextResponse.redirect(new URL('/login?error=auth_callback_failed', baseUrl))
 }

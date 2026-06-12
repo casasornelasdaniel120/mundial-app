@@ -22,10 +22,10 @@ export default async function JoinPage({ params }: Props) {
 
   if (error || !league) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <main className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
         <div className="text-center">
           <span className="text-5xl">🔍</span>
-          <h1 className="mt-4 text-xl font-bold text-gray-900">League not found</h1>
+          <h1 className="mt-4 text-xl font-bold text-white">League not found</h1>
           <p className="mt-2 text-sm text-gray-500">This invite link is invalid or has expired.</p>
         </div>
       </main>
@@ -55,14 +55,14 @@ export default async function JoinPage({ params }: Props) {
           <p className="mt-2 text-sm text-green-300">You&apos;ve been invited to join</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          <h1 className="text-xl font-bold text-gray-900">{league.name}</h1>
+        <div className="rounded-2xl border border-gray-800/60 bg-gray-900/80 p-6 shadow-2xl shadow-black/40 backdrop-blur-sm">
+          <h1 className="text-xl font-bold text-white">{league.name}</h1>
           <p className="mt-1 text-sm text-gray-500">
             {memberCount} / {league.max_teams} members · Budget ${league.budget_cap}M
           </p>
 
           {isFull ? (
-            <div className="mt-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mt-6 rounded-lg border border-red-800/40 bg-red-950/40 px-4 py-3 text-sm text-red-400">
               This league is full and no longer accepting new members.
             </div>
           ) : (

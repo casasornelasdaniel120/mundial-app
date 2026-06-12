@@ -204,9 +204,14 @@ export default function LineupManager({
                           </p>
                         </div>
 
-                        <TeamFlag team={player.team} />
+                        {/* Flag + position badge are redundant at 390px: the team
+                            name is printed under the player and rows are already
+                            grouped by position. Hide both to give the name room. */}
+                        <span className="hidden sm:block">
+                          <TeamFlag team={player.team} />
+                        </span>
 
-                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${POSITION_COLORS[player.position]}`}>
+                        <span className={`hidden shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold sm:inline-block ${POSITION_COLORS[player.position]}`}>
                           {player.position}
                         </span>
 
@@ -232,7 +237,7 @@ export default function LineupManager({
                             setOpenSwapFor(current => (current === player.rosterId ? null : player.rosterId))
                           }}
                           disabled={!candidates.length}
-                          className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          className={`shrink-0 rounded-lg border px-3 py-2.5 text-xs font-medium transition-colors sm:py-1.5 ${
                             isOpen
                               ? 'border-yellow-500/60 bg-yellow-500/10 text-yellow-300'
                               : 'border-gray-700/60 text-gray-300 hover:border-gray-500/60 hover:bg-gray-800/60'
@@ -301,7 +306,7 @@ export default function LineupManager({
           type="button"
           onClick={handleSave}
           disabled={!pendingSwaps.length || isSaving}
-          className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
+          className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none sm:py-2"
         >
           {isSaving ? 'Guardando...' : 'Guardar Alineación'}
         </button>

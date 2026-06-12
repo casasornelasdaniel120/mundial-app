@@ -24,7 +24,7 @@ export default function DeleteLeagueButton({ leagueId }: { leagueId: string }) {
       <button
         type="button"
         onClick={() => { setError(null); setShowModal(true) }}
-        className="rounded-lg border border-red-900/60 bg-red-950/40 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:border-red-700/60 hover:bg-red-900/40"
+        className="rounded-lg border border-red-900/60 bg-red-950/40 px-4 py-2.5 text-sm font-medium text-red-400 transition-colors hover:border-red-700/60 hover:bg-red-900/40 sm:py-2"
       >
         🗑 Eliminar Liga
       </button>

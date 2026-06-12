@@ -116,6 +116,9 @@ export default function DraftRoom({
   const [search,           setSearch]           = useState('')
   const [visibleCount,     setVisibleCount]     = useState(PAGE_SIZE)
   const [countdown,        setCountdown]        = useState(60)
+  // Mobile (<md) tab switcher: 'players' = pick list, 'queue' = turn
+  // indicator + upcoming picks. Desktop always shows all three columns.
+  const [mobileTab,        setMobileTab]        = useState<'players' | 'queue'>('players')
 
   const [isPicking,  startPickTransition] = useTransition()
   const [isStarting, startDraftTransition] = useTransition()
@@ -405,6 +408,13 @@ export default function DraftRoom({
   const myPicks  = useMemo(() => picks.filter(p => p.user_id === authUserId), [picks, authUserId])
   const isMyTurn = session.status === 'active' && session.current_user_id === authUserId
 
+  // Mobile: jump to the player list the moment it becomes this user's turn,
+  // so the pick UI is in front of them while the 60s clock runs. Only fires
+  // on the false→true transition — they can still open 'Cola' mid-turn.
+  useEffect(() => {
+    if (isMyTurn) setMobileTab('players')
+  }, [isMyTurn])
+
   // Trace turn ownership on every render so mismatches are immediately visible.
   console.log(
     `[DraftRoom] render — session.current_user_id=${session.current_user_id} | authUserId=${authUserId} | isMyTurn=${isMyTurn}`
@@ -605,7 +615,9 @@ export default function DraftRoom({
 
   // ── Active draft room ─────────────────────────────────────
   return (
-    <div className="-mx-4 -my-8 sm:-mx-6 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+    // dvh (not vh): on mobile Safari 100vh includes the collapsed URL bar,
+    // which would push the roster bar behind the browser chrome.
+    <div className="-mx-4 -my-8 sm:-mx-6 flex h-[calc(100dvh-3.5rem)] flex-col">
 
       {/* Connection-loss banner */}
       {!isConnected && (
@@ -628,11 +640,28 @@ export default function DraftRoom({
         <span className="text-xs text-gray-500">{picks.length} picks completados</span>
       </div>
 
-      {/* 3-column area */}
-      <div className="flex-1 grid overflow-hidden" style={{ gridTemplateColumns: '1fr 230px 210px' }}>
+      {/* Mobile tab bar — sticky below the top nav, hidden on desktop */}
+      <div className="sticky top-0 z-10 flex shrink-0 border-b border-gray-800/60 bg-gray-900/95 backdrop-blur-sm md:hidden">
+        {([['players', 'Jugadores'], ['queue', 'Cola']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setMobileTab(key)}
+            className={`flex-1 border-b-2 py-3 text-sm font-medium transition-colors ${
+              mobileTab === key
+                ? 'border-green-500 text-green-400'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-        {/* ── LEFT: Available Players ───────────────── */}
-        <div className="flex flex-col border-r border-gray-800/60 overflow-hidden">
+      {/* Mobile (<md): one tab panel at a time. Desktop (md+): 3-column grid. */}
+      <div className="flex flex-1 flex-col overflow-hidden md:grid md:[grid-template-columns:1fr_230px_210px]">
+
+        {/* ── Available Players (mobile: 'Jugadores' tab / desktop: left column) ── */}
+        <div className={`${mobileTab === 'players' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col overflow-hidden border-gray-800/60 md:flex md:border-r`}>
           {/* Filters */}
           <div className="shrink-0 p-3 space-y-2 border-b border-gray-800/60">
             <div className="flex gap-1">
@@ -640,7 +669,7 @@ export default function DraftRoom({
                 <button
                   key={pos}
                   onClick={() => handlePositionFilter(pos)}
-                  className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-md py-2.5 text-xs font-medium transition-colors md:py-1.5 ${
                     posFilter === pos
                       ? 'bg-green-600 text-white'
                       : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'
@@ -655,7 +684,7 @@ export default function DraftRoom({
               placeholder="Buscar jugador o selección…"
               value={search}
               onChange={handleSearchChange}
-              className="w-full rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:border-green-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-2 text-base text-white placeholder-gray-600 focus:border-green-500 focus:outline-none md:py-1.5 md:text-xs"
             />
             <p className="text-[10px] text-gray-600">
               {availablePlayers.length} disponibles
@@ -694,8 +723,8 @@ export default function DraftRoom({
           </div>
         </div>
 
-        {/* ── CENTER: Pick Indicator ────────────────── */}
-        <div className="flex flex-col items-center justify-center gap-5 p-4 border-r border-gray-800/60">
+        {/* ── Pick Indicator (mobile: 'Cola' tab / desktop: center column) ── */}
+        <div className={`${mobileTab === 'queue' ? 'flex' : 'hidden'} shrink-0 flex-col items-center gap-5 border-b border-gray-800/60 p-4 md:flex md:justify-center md:border-b-0 md:border-r`}>
           <div className="text-center">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Turno actual</p>
             <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 ${
@@ -710,8 +739,8 @@ export default function DraftRoom({
           </div>
 
           {/* Countdown ring */}
-          <div className="relative w-24 h-24">
-            <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+          <div className="relative h-24 w-24 shrink-0">
+            <svg className="h-24 w-24 -rotate-90" viewBox="0 0 96 96">
               <circle cx="48" cy="48" r="40" fill="none" stroke="#1f2937" strokeWidth="8" />
               <circle
                 cx="48" cy="48" r="40"
@@ -750,8 +779,8 @@ export default function DraftRoom({
           </div>
         </div>
 
-        {/* ── RIGHT: Snake Order Queue ──────────────── */}
-        <div className="flex flex-col overflow-hidden">
+        {/* ── Snake Order Queue (mobile: 'Cola' tab, below the indicator / desktop: right column) ── */}
+        <div className={`${mobileTab === 'queue' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col overflow-hidden md:flex`}>
           <div className="shrink-0 px-3 py-2.5 border-b border-gray-800/60">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Próximas selecciones</p>
           </div>

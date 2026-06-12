@@ -39,7 +39,7 @@ export default async function LeaguesPage() {
         </div>
         <Link
           href="/leagues/new"
-          className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500"
+          className="shrink-0 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500 sm:py-2"
         >
           + Crear Liga
         </Link>
@@ -83,7 +83,7 @@ export default async function LeaguesPage() {
                 </div>
                 <Link
                   href={`/leagues/${league.id}`}
-                  className="shrink-0 rounded-lg border border-gray-700/60 px-3 py-1.5 text-xs font-medium text-gray-300 transition-colors hover:border-gray-500/60 hover:bg-gray-800/60"
+                  className="shrink-0 rounded-lg border border-gray-700/60 px-3.5 py-2.5 text-xs font-medium text-gray-300 transition-colors hover:border-gray-500/60 hover:bg-gray-800/60 sm:px-3 sm:py-1.5"
                 >
                   Ver →
                 </Link>
