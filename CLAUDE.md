@@ -66,6 +66,7 @@ No test suite exists yet.
 src/app/
   page.tsx             → / — landing page
   (auth)/              → /login, /register — dark auth pages; actions.ts has signIn/signUp
+                          fonts.ts exports Russo One + Chakra Petch (next/font/google) used by the auth layout
   (dashboard)/         → Protected layout with dark nav + auth guard
     leagues/           → /leagues list; /leagues/new create form; actions.ts has createLeague/joinLeague
     leagues/[id]/      → League detail + leaderboard + admin actions (DeleteLeagueButton,
@@ -108,7 +109,7 @@ Each feature group co-locates its mutations in `actions.ts` with `'use server'`.
 
 ### Flow
 1. Admin clicks **"Iniciar Draft"** → `initDraft()` Fisher-Yates shuffles members into `snake_order`, creates session with `status='waiting'`
-2. Admin clicks **"Comenzar Draft"** → `startDraft()` sets `status='active'`, `pick_deadline=now+60s`
+2. Admin clicks **"Comenzar Draft"** → `startDraft()` sets `status='active'`, `pick_deadline=now+60s`; after the action resolves, `DraftRoom` immediately refetches the session via the browser Supabase client to transition the UI without waiting for the Realtime event
 3. Members pick players; each pick calls `makePick()` → `applyPick()` → `advanceDraftTurn()`
 4. When all 19 × N picks are done, `advanceDraftTurn()` sets `status='completed'` and calls `finalizeDraft()` to populate `fantasy_team_players`
 
@@ -238,6 +239,8 @@ All DB interfaces are in `src/types/db.ts` (prefixed with `I`: `ILeague`, `IPlay
 - **Functions/hooks:** camelCase
 - **Types:** PascalCase, interfaces prefixed with `I`
 - **Theme:** `bg-gray-950` base, `bg-gray-900/60` cards, `border-gray-800/60`, green accents (`green-400`/`green-600`)
+- **Auth pages typography:** Russo One (headings/CTAs) + Chakra Petch (body/labels) via `next/font/google`; defined in `src/app/(auth)/fonts.ts` and applied as CSS variables (`--font-russo`, `--font-chakra`) from the auth layout
+- **Icons:** Use SVG (Heroicons style) — never emoji as UI icons
 - Always wrap Supabase calls in try/catch or check `.error`
 - Ask before creating new DB tables — check the schema above first
 - Player/team data comes from API-Football sync routes, not seed scripts
