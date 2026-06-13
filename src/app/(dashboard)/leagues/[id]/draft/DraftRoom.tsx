@@ -507,7 +507,20 @@ export default function DraftRoom({
   }, [isMyTurn, isPicking, session.current_pick_number, session.id, authUserId, isConnected])
 
   const handleStartDraft = () => {
-    startDraftTransition(async () => { await startDraft(session.id) })
+    startDraftTransition(async () => {
+      const result = await startDraft(session.id)
+      if (!result?.error) {
+        // Realtime handles other clients; update local state immediately
+        // so the admin doesn't have to wait for the Realtime round-trip.
+        const supabase = createClient()
+        const { data } = await supabase
+          .from('draft_sessions')
+          .select('*')
+          .eq('id', session.id)
+          .single()
+        if (data) setSession(data as IDraftSession)
+      }
+    })
   }
 
   // ── Waiting room ──────────────────────────────────────────
