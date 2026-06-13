@@ -9,20 +9,52 @@ export default function NewLeaguePage() {
 
   return (
     <div className="max-w-lg">
-      <div className="mb-6">
-        <Link href="/leagues" className="text-sm text-gray-500 transition-colors hover:text-gray-300">
-          ← Back to leagues
+
+      {/* Back + heading */}
+      <div className="mb-7">
+        <Link
+          href="/leagues"
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-600 transition-colors hover:text-gray-300 cursor-pointer"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+          </svg>
+          Mis ligas
         </Link>
-        <h1 className="mt-3 text-2xl font-bold text-white">Create a League</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          You&apos;ll be the admin. Invite others with the link generated after creation.
-        </p>
+
+        <div className="mt-4">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.3em] text-green-500">
+            Nueva competencia
+          </p>
+          <h1
+            className="text-3xl text-white uppercase tracking-tight"
+            style={{ fontFamily: 'var(--font-russo)' }}
+          >
+            Crear Liga
+          </h1>
+          <p className="mt-1.5 text-xs text-gray-600">
+            Serás el administrador. El enlace de invitación se genera al crear.
+          </p>
+        </div>
       </div>
 
-      <form action={formAction} className="rounded-2xl border border-gray-800/60 bg-gray-900/60 p-6 space-y-5">
+      {/* Form card */}
+      <form
+        action={formAction}
+        className="rounded-2xl border border-gray-800/50 bg-gray-900/40 p-6 space-y-5"
+      >
+
+        {/* League name */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">
-            League name <span className="text-red-500">*</span>
+          <label
+            htmlFor="name"
+            className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-gray-500"
+          >
+            <svg className="h-3 w-3 text-green-500/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+            </svg>
+            Nombre de la liga
+            <span className="text-red-500/70 ml-0.5">*</span>
           </label>
           <input
             id="name"
@@ -30,15 +62,22 @@ export default function NewLeaguePage() {
             type="text"
             required
             maxLength={80}
-            placeholder="e.g. Office World Cup League"
-            className="w-full rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-2 text-base text-white placeholder-gray-600 transition-colors focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 sm:text-sm"
+            placeholder="Ej. Liga de la Oficina 2026"
+            className="w-full rounded-xl border border-white/8 bg-black/30 px-4 py-3 text-sm text-white placeholder-gray-700 transition-all duration-200 focus:border-green-500/50 focus:bg-black/50 focus:outline-none focus:ring-2 focus:ring-green-500/15"
           />
         </div>
 
+        {/* Max teams + Budget */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="max_teams" className="block text-sm font-medium text-gray-400 mb-1">
-              Max teams
+            <label
+              htmlFor="max_teams"
+              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-gray-500"
+            >
+              <svg className="h-3 w-3 text-green-500/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Máx. equipos
             </label>
             <input
               id="max_teams"
@@ -47,13 +86,19 @@ export default function NewLeaguePage() {
               defaultValue={20}
               min={2}
               max={100}
-              className="w-full rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-2 text-base text-white transition-colors focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 sm:text-sm"
+              className="w-full rounded-xl border border-white/8 bg-black/30 px-4 py-3 text-sm text-white transition-all duration-200 focus:border-green-500/50 focus:bg-black/50 focus:outline-none focus:ring-2 focus:ring-green-500/15"
             />
           </div>
 
           <div>
-            <label htmlFor="budget_cap" className="block text-sm font-medium text-gray-400 mb-1">
-              Budget cap ($M)
+            <label
+              htmlFor="budget_cap"
+              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-gray-500"
+            >
+              <svg className="h-3 w-3 text-green-500/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Presupuesto $M
             </label>
             <input
               id="budget_cap"
@@ -63,25 +108,49 @@ export default function NewLeaguePage() {
               min={50}
               max={1000}
               step={0.5}
-              className="w-full rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-2 text-base text-white transition-colors focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 sm:text-sm"
+              className="w-full rounded-xl border border-white/8 bg-black/30 px-4 py-3 text-sm text-white transition-all duration-200 focus:border-green-500/50 focus:bg-black/50 focus:outline-none focus:ring-2 focus:ring-green-500/15"
             />
           </div>
         </div>
 
-        <p className="text-xs text-gray-500">
-          Default scoring rules (goal +5, assist +3, yellow −1, red −3, clean sheet +4) will be added automatically. You can edit them later as admin.
-        </p>
+        {/* Scoring rules note */}
+        <div className="flex items-start gap-3 rounded-xl border border-gray-800/40 bg-gray-900/30 px-4 py-3">
+          <svg className="mt-0.5 h-4 w-4 shrink-0 text-green-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-[11px] leading-relaxed text-gray-600">
+            Reglas de puntuación por defecto: gol <span className="text-gray-400">+5</span>, asistencia <span className="text-gray-400">+3</span>, amarilla <span className="text-gray-400">−1</span>, roja <span className="text-gray-400">−3</span>, arco en cero <span className="text-gray-400">+4</span>. Puedes editarlas desde el panel de admin.
+          </p>
+        </div>
 
+        {/* Error */}
         {state?.error && (
-          <p className="rounded-lg border border-red-800/40 bg-red-950/40 px-3 py-2 text-sm text-red-400">{state.error}</p>
+          <div className="flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3">
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="text-xs text-red-400">{state.error}</p>
+          </div>
         )}
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-950 hover:bg-green-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors sm:py-2.5"
+          className="w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold uppercase tracking-widest text-white shadow-lg shadow-green-900/40 transition-all duration-200 hover:bg-green-500 hover:shadow-green-900/60 focus:outline-none focus:ring-2 focus:ring-green-500/50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+          style={{ fontFamily: 'var(--font-russo)' }}
         >
-          {isPending ? 'Creating…' : 'Create league'}
+          {isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Creando…
+            </span>
+          ) : (
+            'Crear Liga'
+          )}
         </button>
       </form>
     </div>
