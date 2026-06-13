@@ -34,10 +34,10 @@ const SECTIONS: Array<{ position: Position; label: string }> = [
 ]
 
 const POSITION_COLORS: Record<Position, string> = {
-  GK: 'bg-yellow-900/50 text-yellow-300',
-  DEF: 'bg-blue-900/50 text-blue-300',
-  MID: 'bg-green-900/50 text-green-300',
-  FWD: 'bg-red-900/50 text-red-300',
+  GK:  'bg-amber-50 text-amber-700',
+  DEF: 'bg-blue-50 text-blue-700',
+  MID: 'bg-green-50 text-green-700',
+  FWD: 'bg-red-50 text-red-700',
 }
 
 function getInitials(name: string): string {
@@ -57,14 +57,13 @@ function PlayerAvatar({ player }: { player: LineupPlayer }) {
   if (player.photoUrl) {
     return (
       <span
-        className="block h-10 w-10 shrink-0 rounded-full border border-gray-700/60 bg-gray-800 bg-cover bg-center"
+        className="block h-10 w-10 shrink-0 rounded-full border border-stone-200 bg-stone-100 bg-cover bg-center"
         style={{ backgroundImage: `url(${player.photoUrl})` }}
       />
     )
   }
-
   return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-700/60 bg-gray-800 text-xs font-bold text-gray-200">
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-stone-100 text-xs font-bold text-stone-500">
       {getInitials(player.name) || player.position}
     </span>
   )
@@ -80,7 +79,7 @@ function TeamFlag({ team }: { team: Team | null }) {
       />
     )
   }
-  return <span className="h-4 w-6 shrink-0 rounded-sm bg-gray-700" />
+  return <span className="h-4 w-6 shrink-0 rounded-sm bg-stone-200" />
 }
 
 export default function LineupManager({
@@ -102,8 +101,6 @@ export default function LineupManager({
     [pendingSwaps]
   )
 
-  // Players of the same position on the opposite side (TIT ↔ SUP) — the only
-  // valid swap targets for a given row.
   function swapCandidates(player: LineupPlayer): LineupPlayer[] {
     return players.filter(
       item =>
@@ -113,7 +110,6 @@ export default function LineupManager({
   }
 
   function handleSwap(a: LineupPlayer, b: LineupPlayer) {
-    // Exchange is_starting values locally (optimistic)
     setPlayers(current =>
       current.map(item => {
         if (item.rosterId === a.rosterId) return { ...item, isStarting: b.isStarting }
@@ -121,7 +117,6 @@ export default function LineupManager({
         return item
       })
     )
-    // Record both sides in the pending batch (latest value per rosterId wins)
     setPendingSwaps(prev => {
       const next = new Map(prev.map(swap => [swap.rosterId, swap.isStarting]))
       next.set(a.rosterId, b.isStarting)
@@ -154,13 +149,13 @@ export default function LineupManager({
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-white">Alineación</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-lg font-semibold text-stone-900">Alineación</h2>
+        <p className="mt-1 text-sm text-stone-400">
           Usa «Cambiar» para intercambiar un titular por un suplente de la misma posición.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-800/60 bg-gray-900/60">
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
         {SECTIONS.map(({ position, label }) => {
           const sectionPlayers = [
             ...players.filter(p => p.position === position && p.isStarting),
@@ -171,13 +166,13 @@ export default function LineupManager({
 
           return (
             <div key={position}>
-              <div className="border-b border-gray-800/60 bg-gray-950/40 px-4 py-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <div className="border-b border-stone-100 bg-stone-50 px-4 py-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400">
                   {label}
                 </h3>
               </div>
 
-              <div className="divide-y divide-gray-800/40">
+              <div className="divide-y divide-stone-50">
                 {sectionPlayers.map(player => {
                   const candidates = swapCandidates(player)
                   const isOpen = openSwapFor === player.rosterId
@@ -187,26 +182,23 @@ export default function LineupManager({
                     <div key={player.rosterId}>
                       <div
                         className={`flex items-center gap-3 px-4 py-3 ${
-                          hasPendingChange ? 'bg-yellow-950/20' : ''
+                          hasPendingChange ? 'bg-amber-50/60' : ''
                         }`}
                       >
                         <PlayerAvatar player={player} />
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-medium text-white">{player.name}</p>
+                            <p className="truncate text-sm font-medium text-stone-800">{player.name}</p>
                             {hasPendingChange && (
-                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-400" title="Cambio pendiente" />
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" title="Cambio pendiente" />
                             )}
                           </div>
-                          <p className="mt-0.5 truncate text-xs text-gray-500">
+                          <p className="mt-0.5 truncate text-xs text-stone-400">
                             {player.team?.name ?? '—'}
                           </p>
                         </div>
 
-                        {/* Flag + position badge are redundant at 390px: the team
-                            name is printed under the player and rows are already
-                            grouped by position. Hide both to give the name room. */}
                         <span className="hidden sm:block">
                           <TeamFlag team={player.team} />
                         </span>
@@ -218,14 +210,14 @@ export default function LineupManager({
                         <span
                           className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
                             player.isStarting
-                              ? 'bg-green-900/60 text-green-300'
-                              : 'bg-gray-800 text-gray-400'
+                              ? 'bg-green-50 text-[#006847]'
+                              : 'bg-stone-100 text-stone-400'
                           }`}
                         >
                           {player.isStarting ? 'TIT' : 'SUP'}
                         </span>
 
-                        <span className="w-12 shrink-0 text-right text-sm font-semibold tabular-nums text-green-400">
+                        <span className="w-12 shrink-0 text-right text-sm font-semibold tabular-nums" style={{ color: '#006847' }}>
                           {formatPoints(player.totalPoints)}
                         </span>
 
@@ -239,19 +231,18 @@ export default function LineupManager({
                           disabled={!candidates.length}
                           className={`shrink-0 rounded-lg border px-3 py-2.5 text-xs font-medium transition-colors sm:py-1.5 ${
                             isOpen
-                              ? 'border-yellow-500/60 bg-yellow-500/10 text-yellow-300'
-                              : 'border-gray-700/60 text-gray-300 hover:border-gray-500/60 hover:bg-gray-800/60'
+                              ? 'border-amber-300 bg-amber-50 text-amber-700'
+                              : 'border-stone-300 text-stone-600 hover:border-stone-400 hover:bg-stone-50'
                           } disabled:cursor-not-allowed disabled:opacity-40`}
                         >
                           {isOpen ? 'Cancelar' : 'Cambiar'}
                         </button>
                       </div>
 
-                      {/* Inline swap panel: opposite-side players of the same position */}
                       {isOpen && (
-                        <div className="border-t border-gray-800/50 bg-gray-950/50 px-4 py-3">
-                          <p className="mb-2 text-xs text-gray-500">
-                            Cambiar a <span className="font-medium text-gray-300">{player.name}</span> por:
+                        <div className="border-t border-stone-100 bg-stone-50/60 px-4 py-3">
+                          <p className="mb-2 text-xs text-stone-400">
+                            Cambiar a <span className="font-medium text-stone-700">{player.name}</span> por:
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {candidates.map(candidate => (
@@ -259,14 +250,14 @@ export default function LineupManager({
                                 key={candidate.rosterId}
                                 type="button"
                                 onClick={() => handleSwap(player, candidate)}
-                                className="flex items-center gap-2 rounded-lg border border-gray-700/60 bg-gray-900/80 px-3 py-2 text-left transition-colors hover:border-green-600/60 hover:bg-green-950/30"
+                                className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-left transition-colors hover:border-[#006847]/30 hover:bg-green-50"
                               >
                                 <PlayerAvatar player={candidate} />
                                 <span className="min-w-0">
-                                  <span className="block max-w-36 truncate text-xs font-medium text-white">
+                                  <span className="block max-w-36 truncate text-xs font-medium text-stone-800">
                                     {candidate.name}
                                   </span>
-                                  <span className="mt-0.5 block text-[10px] text-gray-500">
+                                  <span className="mt-0.5 block text-[10px] text-stone-400">
                                     {candidate.isStarting ? 'TIT' : 'SUP'} · {formatPoints(candidate.totalPoints)} pts
                                   </span>
                                 </span>
@@ -288,8 +279,8 @@ export default function LineupManager({
         <div
           className={`rounded-lg border px-4 py-3 text-sm ${
             error
-              ? 'border-red-900/60 bg-red-950/40 text-red-300'
-              : 'border-green-900/60 bg-green-950/40 text-green-300'
+              ? 'border-red-200 bg-red-50 text-red-600'
+              : 'border-green-200 bg-green-50 text-[#006847]'
           }`}
         >
           {error ?? toast}
@@ -298,7 +289,7 @@ export default function LineupManager({
 
       <div className="flex items-center justify-end gap-3">
         {pendingSwaps.length > 0 && (
-          <span className="text-xs text-yellow-300">
+          <span className="text-xs text-amber-600">
             {pendingSwaps.length} cambio{pendingSwaps.length === 1 ? '' : 's'} pendiente{pendingSwaps.length === 1 ? '' : 's'}
           </span>
         )}
@@ -306,7 +297,7 @@ export default function LineupManager({
           type="button"
           onClick={handleSave}
           disabled={!pendingSwaps.length || isSaving}
-          className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-950 transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none sm:py-2"
+          className="rounded-lg bg-[#006847] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#005539] disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 sm:py-2"
         >
           {isSaving ? 'Guardando...' : 'Guardar Alineación'}
         </button>

@@ -88,10 +88,10 @@ type MatchdayBreakdown = {
 }
 
 const POSITION_COLORS: Record<Position, string> = {
-  GK: 'bg-yellow-900/50 text-yellow-300',
-  DEF: 'bg-blue-900/50 text-blue-300',
-  MID: 'bg-green-900/50 text-green-300',
-  FWD: 'bg-red-900/50 text-red-300',
+  GK:  'bg-amber-50 text-amber-700 border border-amber-200',
+  DEF: 'bg-blue-50 text-blue-700 border border-blue-200',
+  MID: 'bg-green-50 text-[#006847] border border-green-200',
+  FWD: 'bg-red-50 text-red-700 border border-red-200',
 }
 
 const STAT_CONFIG: Array<{ key: StatKey; eventType: EventType; label: string }> = [
@@ -114,7 +114,6 @@ function formatPoints(points: number): string {
 
 function formatDate(value: string | null): string {
   if (!value) return 'Fecha por confirmar'
-
   return new Intl.DateTimeFormat('es-MX', {
     day: 'numeric',
     month: 'short',
@@ -130,7 +129,6 @@ function stageLabel(stage: string | null): string {
     semi: 'Semifinal',
     final: 'Final',
   }
-
   return stage ? (labels[stage] ?? stage.replace(/_/g, ' ')) : 'Partido'
 }
 
@@ -143,9 +141,7 @@ function calculateStatPoints(
     const value = typeof rawValue === 'boolean' ? (rawValue ? 1 : 0) : rawValue
     const rule = scoringRules.get(eventType) ?? 0
     const points = value * rule
-
     if (!value || !points) return []
-
     return [{ label, value, rule, points }]
   })
 }
@@ -225,7 +221,6 @@ export default async function MyTeamPage({ params }: Props) {
     .map(row => {
       const player = normaliseSingle(row.players)
       if (!player) return null
-
       return {
         rosterId: row.id,
         id: player.id,
@@ -318,28 +313,32 @@ export default async function MyTeamPage({ params }: Props) {
     <div className="space-y-6">
       <Link
         href={`/leagues/${id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-300"
+        className="inline-flex items-center gap-1.5 text-sm text-stone-400 transition-colors hover:text-stone-700"
       >
-        ← {league.name}
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+        </svg>
+        {league.name}
       </Link>
 
-      <div className="rounded-2xl border border-gray-800/60 bg-gray-900/60 p-6">
+      {/* Team header */}
+      <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm text-gray-500">{league.name}</p>
+            <p className="text-sm text-stone-400">{league.name}</p>
             <RenameTeamForm leagueId={id} initialName={membership.team_name ?? 'Mi Equipo'} />
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:min-w-64">
-            <div className="rounded-xl border border-gray-800/60 bg-gray-950/50 p-4">
-              <p className="text-xs uppercase tracking-wider text-gray-500">Puntos</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-green-400">
+            <div className="rounded-xl border border-stone-100 bg-stone-50 p-4">
+              <p className="text-xs uppercase tracking-wider text-stone-400">Puntos</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: '#006847' }}>
                 {formatPoints(Number(fantasyTeam.total_points) || 0)}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-800/60 bg-gray-950/50 p-4">
-              <p className="text-xs uppercase tracking-wider text-gray-500">Ranking</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-white">
+            <div className="rounded-xl border border-stone-100 bg-stone-50 p-4">
+              <p className="text-xs uppercase tracking-wider text-stone-400">Ranking</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-stone-900">
                 {rank ? `#${rank}` : '-'}
               </p>
             </div>
@@ -349,44 +348,45 @@ export default async function MyTeamPage({ params }: Props) {
 
       <LineupManager leagueId={id} players={roster} />
 
-      <section className="overflow-hidden rounded-2xl border border-gray-800/60 bg-gray-900/60">
-        <div className="border-b border-gray-800/60 px-6 py-4">
-          <h2 className="font-semibold text-white">Points Breakdown</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Puntos calculados desde estadisticas de partido y reglas de la liga.
+      {/* Points breakdown */}
+      <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+        <div className="border-b border-stone-100 px-6 py-4">
+          <h2 className="font-semibold text-stone-900">Desglose de Puntos</h2>
+          <p className="mt-1 text-sm text-stone-400">
+            Puntos calculados desde estadísticas de partido y reglas de la liga.
           </p>
         </div>
 
         {matchdays.length ? (
-          <div className="divide-y divide-gray-800/50">
+          <div className="divide-y divide-stone-100">
             {matchdays.map((matchday, index) => (
               <details key={matchday.id} className="group">
-                <summary className="grid cursor-pointer grid-cols-[1fr_auto] gap-4 px-6 py-4 transition-colors hover:bg-gray-800/30">
+                <summary className="grid cursor-pointer grid-cols-[1fr_auto] gap-4 px-6 py-4 transition-colors hover:bg-stone-50">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-white">Jornada {index + 1}</p>
-                    <p className="mt-0.5 truncate text-xs text-gray-500">
+                    <p className="text-sm font-medium text-stone-800">Jornada {index + 1}</p>
+                    <p className="mt-0.5 truncate text-xs text-stone-400">
                       {matchday.dateLabel} · {matchday.opponentLabel}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold tabular-nums text-green-400">
+                    <p className="text-sm font-semibold tabular-nums" style={{ color: '#006847' }}>
                       {formatPoints(matchday.points)} pts
                     </p>
-                    <p className="text-xs text-gray-600 group-open:hidden">Ver detalle</p>
+                    <p className="text-xs text-stone-300 group-open:hidden">Ver detalle</p>
                   </div>
                 </summary>
 
-                <div className="border-t border-gray-800/50 bg-gray-950/30 px-6 py-4">
+                <div className="border-t border-stone-100 bg-stone-50/50 px-6 py-4">
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[560px] text-sm">
                       <thead>
-                        <tr className="border-b border-gray-800/60 text-xs uppercase tracking-wider text-gray-500">
+                        <tr className="border-b border-stone-100 text-xs uppercase tracking-wider text-stone-400">
                           <th className="py-2 text-left font-medium">Jugador</th>
                           <th className="py-2 text-left font-medium">Eventos</th>
                           <th className="py-2 text-right font-medium">Pts</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-800/40">
+                      <tbody className="divide-y divide-stone-100">
                         {matchday.players.map(player => (
                           <tr key={`${matchday.id}-${player.playerId}`}>
                             <td className="py-3 pr-4">
@@ -394,17 +394,17 @@ export default async function MyTeamPage({ params }: Props) {
                                 <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${POSITION_COLORS[player.position]}`}>
                                   {player.position}
                                 </span>
-                                <span className="font-medium text-gray-200">{player.playerName}</span>
+                                <span className="font-medium text-stone-700">{player.playerName}</span>
                               </div>
                             </td>
-                            <td className="py-3 pr-4 text-gray-400">
+                            <td className="py-3 pr-4 text-stone-500">
                               {player.events.map(event => (
                                 <span key={event.label} className="mr-3 whitespace-nowrap">
                                   {event.label} x{event.value} ({event.rule > 0 ? '+' : ''}{formatPoints(event.rule)})
                                 </span>
                               ))}
                             </td>
-                            <td className="py-3 text-right font-semibold tabular-nums text-green-400">
+                            <td className="py-3 text-right font-semibold tabular-nums" style={{ color: '#006847' }}>
                               {formatPoints(player.points)}
                             </td>
                           </tr>
@@ -417,8 +417,8 @@ export default async function MyTeamPage({ params }: Props) {
             ))}
           </div>
         ) : (
-          <div className="px-6 py-10 text-center text-sm text-gray-500">
-            No hay puntos registrados todavia.
+          <div className="px-6 py-10 text-center text-sm text-stone-400">
+            No hay puntos registrados todavía.
           </div>
         )}
       </section>

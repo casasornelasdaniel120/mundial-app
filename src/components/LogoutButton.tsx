@@ -10,9 +10,9 @@ export default function LogoutButton() {
     <button
       onClick={() => startTransition(() => signOut())}
       disabled={isPending}
-      className="text-sm font-medium text-gray-400 hover:text-gray-100 disabled:opacity-50 transition-colors"
+      className="text-sm font-medium text-stone-400 hover:text-stone-700 disabled:opacity-50 transition-colors"
     >
-      {isPending ? 'Signing out…' : 'Sign out'}
+      {isPending ? 'Saliendo…' : 'Cerrar sesión'}
     </button>
   )
 }

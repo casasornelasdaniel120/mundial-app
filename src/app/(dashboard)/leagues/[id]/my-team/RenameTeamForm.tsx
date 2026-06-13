@@ -60,13 +60,13 @@ export default function RenameTeamForm({
               if (e.key === 'Enter') handleSave()
               if (e.key === 'Escape') handleCancel()
             }}
-            className="w-full min-w-0 rounded-lg border border-gray-700/60 bg-gray-950/80 px-3 py-1.5 text-xl font-bold text-white placeholder-gray-600 focus:border-green-500 focus:outline-none sm:w-auto"
+            className="w-full min-w-0 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xl font-bold text-stone-900 placeholder-stone-400 focus:border-[#006847] focus:outline-none focus:ring-2 focus:ring-[#006847]/10 sm:w-auto"
           />
           <button
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg bg-[#006847] px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#005539] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? 'Guardando…' : 'Guardar'}
           </button>
@@ -74,23 +74,23 @@ export default function RenameTeamForm({
             type="button"
             onClick={handleCancel}
             disabled={isSaving}
-            className="rounded-lg border border-gray-700/60 px-3 py-1.5 text-sm text-gray-400 transition-colors hover:text-gray-200"
+            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:text-stone-700"
           >
             Cancelar
           </button>
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
     )
   }
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-2">
-      <h1 className="text-2xl font-bold text-white">{savedName}</h1>
+      <h1 className="text-2xl font-bold text-stone-900">{savedName}</h1>
       <button
         type="button"
         onClick={handleEdit}
-        className="rounded-md px-2.5 py-2 text-xs text-gray-500 transition-colors hover:bg-gray-800/50 hover:text-gray-300 sm:py-1"
+        className="rounded-md px-2.5 py-2 text-xs text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700 sm:py-1"
       >
         Cambiar nombre
       </button>

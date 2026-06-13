@@ -14,7 +14,7 @@ export default function NewLeaguePage() {
       <div className="mb-7">
         <Link
           href="/leagues"
-          className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-600 transition-colors hover:text-gray-300 cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-700 cursor-pointer"
         >
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -23,16 +23,16 @@ export default function NewLeaguePage() {
         </Link>
 
         <div className="mt-4">
-          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.3em] text-green-500">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.3em]" style={{ color: '#006847' }}>
             Nueva competencia
           </p>
           <h1
-            className="text-3xl text-white uppercase tracking-tight"
+            className="text-3xl text-stone-900 uppercase tracking-tight"
             style={{ fontFamily: 'var(--font-russo)' }}
           >
             Crear Liga
           </h1>
-          <p className="mt-1.5 text-xs text-gray-600">
+          <p className="mt-1.5 text-xs text-stone-400">
             Serás el administrador. El enlace de invitación se genera al crear.
           </p>
         </div>
@@ -41,20 +41,20 @@ export default function NewLeaguePage() {
       {/* Form card */}
       <form
         action={formAction}
-        className="rounded-2xl border border-gray-800/50 bg-gray-900/40 p-6 space-y-5"
+        className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm space-y-5"
       >
 
         {/* League name */}
         <div>
           <label
             htmlFor="name"
-            className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-gray-500"
+            className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-stone-500"
           >
-            <svg className="h-3 w-3 text-green-500/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <svg className="h-3 w-3" style={{ color: '#006847' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
             Nombre de la liga
-            <span className="text-red-500/70 ml-0.5">*</span>
+            <span className="text-red-400 ml-0.5">*</span>
           </label>
           <input
             id="name"
@@ -63,7 +63,7 @@ export default function NewLeaguePage() {
             required
             maxLength={80}
             placeholder="Ej. Liga de la Oficina 2026"
-            className="w-full rounded-xl border border-white/8 bg-black/30 px-4 py-3 text-sm text-white placeholder-gray-700 transition-all duration-200 focus:border-green-500/50 focus:bg-black/50 focus:outline-none focus:ring-2 focus:ring-green-500/15"
+            className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 placeholder-stone-400 transition-all focus:border-[#006847] focus:outline-none focus:ring-2 focus:ring-[#006847]/10"
           />
         </div>
 
@@ -72,9 +72,9 @@ export default function NewLeaguePage() {
           <div>
             <label
               htmlFor="max_teams"
-              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-gray-500"
+              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-stone-500"
             >
-              <svg className="h-3 w-3 text-green-500/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <svg className="h-3 w-3" style={{ color: '#006847' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               Máx. equipos
@@ -86,16 +86,16 @@ export default function NewLeaguePage() {
               defaultValue={20}
               min={2}
               max={100}
-              className="w-full rounded-xl border border-white/8 bg-black/30 px-4 py-3 text-sm text-white transition-all duration-200 focus:border-green-500/50 focus:bg-black/50 focus:outline-none focus:ring-2 focus:ring-green-500/15"
+              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 transition-all focus:border-[#006847] focus:outline-none focus:ring-2 focus:ring-[#006847]/10"
             />
           </div>
 
           <div>
             <label
               htmlFor="budget_cap"
-              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-gray-500"
+              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-widest text-stone-500"
             >
-              <svg className="h-3 w-3 text-green-500/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <svg className="h-3 w-3" style={{ color: '#006847' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Presupuesto $M
@@ -108,28 +108,28 @@ export default function NewLeaguePage() {
               min={50}
               max={1000}
               step={0.5}
-              className="w-full rounded-xl border border-white/8 bg-black/30 px-4 py-3 text-sm text-white transition-all duration-200 focus:border-green-500/50 focus:bg-black/50 focus:outline-none focus:ring-2 focus:ring-green-500/15"
+              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 transition-all focus:border-[#006847] focus:outline-none focus:ring-2 focus:ring-[#006847]/10"
             />
           </div>
         </div>
 
         {/* Scoring rules note */}
-        <div className="flex items-start gap-3 rounded-xl border border-gray-800/40 bg-gray-900/30 px-4 py-3">
-          <svg className="mt-0.5 h-4 w-4 shrink-0 text-green-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+        <div className="flex items-start gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+          <svg className="mt-0.5 h-4 w-4 shrink-0" style={{ color: '#006847', opacity: 0.6 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-[11px] leading-relaxed text-gray-600">
-            Reglas de puntuación por defecto: gol <span className="text-gray-400">+5</span>, asistencia <span className="text-gray-400">+3</span>, amarilla <span className="text-gray-400">−1</span>, roja <span className="text-gray-400">−3</span>, arco en cero <span className="text-gray-400">+4</span>. Puedes editarlas desde el panel de admin.
+          <p className="text-[11px] leading-relaxed text-stone-500">
+            Reglas de puntuación por defecto: gol <span className="text-stone-700">+5</span>, asistencia <span className="text-stone-700">+3</span>, amarilla <span className="text-stone-700">−1</span>, roja <span className="text-stone-700">−3</span>, arco en cero <span className="text-stone-700">+4</span>. Puedes editarlas desde el panel de admin.
           </p>
         </div>
 
         {/* Error */}
         {state?.error && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/8 px-4 py-3">
-            <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <p className="text-xs text-red-400">{state.error}</p>
+            <p className="text-xs text-red-600">{state.error}</p>
           </div>
         )}
 
@@ -137,7 +137,7 @@ export default function NewLeaguePage() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold uppercase tracking-widest text-white shadow-lg shadow-green-900/40 transition-all duration-200 hover:bg-green-500 hover:shadow-green-900/60 focus:outline-none focus:ring-2 focus:ring-green-500/50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+          className="w-full rounded-xl bg-[#006847] px-4 py-3 text-sm font-semibold uppercase tracking-widest text-white transition-all hover:bg-[#005539] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
           style={{ fontFamily: 'var(--font-russo)' }}
         >
           {isPending ? (
@@ -148,9 +148,7 @@ export default function NewLeaguePage() {
               </svg>
               Creando…
             </span>
-          ) : (
-            'Crear Liga'
-          )}
+          ) : 'Crear Liga'}
         </button>
       </form>
     </div>

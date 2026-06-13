@@ -1,33 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { russo, chakra } from '@/lib/fonts'
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "World Cup Fantasy 2026",
-  description: "Fantasy football league for the 2026 World Cup",
+  title: "Mundial Fantasy 2026",
+  description: "Liga fantasy para el Mundial FIFA 2026 en México. Crea tu equipo, arma tu once y compite con tus amigos.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="es" className={`${russo.variable} ${chakra.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col" style={{ fontFamily: 'var(--font-chakra), system-ui, sans-serif' }}>
+        {children}
+      </body>
     </html>
   );
 }
